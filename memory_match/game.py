@@ -4,6 +4,7 @@ import os
 import random
 from dataclasses import dataclass, field
 from typing import Tuple, List, Optional
+import math
 
 SAVE_FILE = 'save.json'
 
@@ -51,6 +52,8 @@ class Card:
     rect: pygame.Rect
     is_face_up: bool = False
     is_matched: bool = False
+    target: Optional[Tuple[int, int]] = None
+    visible: bool = True
 
 @dataclass
 class MemoryMatchGame:
@@ -75,6 +78,9 @@ class MemoryMatchGame:
         self.start_ticks = 0
         self.time_limit = 0
         self.time_left = 0
+        self.flip_start: Optional[int] = None
+        self.card_w = 0
+        self.card_h = 0
 
     def run(self):
         while True:
@@ -143,6 +149,8 @@ class MemoryMatchGame:
         random.shuffle(values)
         card_w = self.width//cols
         card_h = (self.height-100)//rows
+        self.card_w = card_w - 10
+        self.card_h = card_h - 10
         self.cards = []
         for r in range(rows):
             for c in range(cols):
@@ -171,7 +179,7 @@ class MemoryMatchGame:
                         self.state = 'menu'
                     if event.key == pygame.K_F11:
                         self.toggle_fullscreen()
-            self.update_timer()
+            self.update_game(dt)
             self.draw_game()
             if self.check_complete():
                 self.finish_level()
@@ -188,17 +196,39 @@ class MemoryMatchGame:
                 elif not self.second_card and card != self.first_card:
                     self.second_card = card
                     self.moves += 1
+                    self.flip_start = pygame.time.get_ticks()
                 break
-        if self.first_card and self.second_card:
-            pygame.time.delay(500)
-            if self.first_card.value == self.second_card.value:
-                self.first_card.is_matched = True
-                self.second_card.is_matched = True
-            else:
-                self.first_card.is_face_up = False
-                self.second_card.is_face_up = False
-            self.first_card = None
-            self.second_card = None
+
+    def update_game(self, dt: int):
+        self.update_timer()
+        now = pygame.time.get_ticks()
+        if self.first_card and self.second_card and self.flip_start:
+            if now - self.flip_start >= 600:
+                if self.first_card.value == self.second_card.value:
+                    self.first_card.is_matched = True
+                    self.second_card.is_matched = True
+                    for card in (self.first_card, self.second_card):
+                        card.target = (self.width + self.card_w, card.rect.centery)
+                else:
+                    self.first_card.is_face_up = False
+                    self.second_card.is_face_up = False
+                self.first_card = None
+                self.second_card = None
+                self.flip_start = None
+        for card in self.cards:
+            if card.target and card.visible:
+                cx, cy = card.rect.center
+                tx, ty = card.target
+                dx, dy = tx - cx, ty - cy
+                dist = math.hypot(dx, dy)
+                speed = 15
+                if dist <= speed:
+                    card.rect.center = card.target
+                    if card.rect.left > self.width:
+                        card.visible = False
+                else:
+                    card.rect.centerx += int(speed * dx / dist)
+                    card.rect.centery += int(speed * dy / dist)
 
     def update_timer(self):
         elapsed = (pygame.time.get_ticks() - self.start_ticks) / 1000
@@ -207,6 +237,8 @@ class MemoryMatchGame:
     def draw_game(self):
         self.screen.fill((0, 0, 0))
         for card in self.cards:
+            if not card.visible:
+                continue
             color = (200, 200, 200)
             if card.is_face_up or card.is_matched:
                 color = (50, 150, 50)
