@@ -18,3 +18,5 @@ Press the small **Dev** button in the bottom-right corner of the menu or level s
 
 The keypad shows digits in a familiar phone layout with a `0` key and larger **Submit** and **Cancel** buttons beneath. A **Menu** button appears on every screen so you can always return to the main menu. When Dev mode is active the button changes to **Normal** which restores your regular progress.
 
+While playing in Dev mode, each card faintly shows its hidden value, allowing you to quickly test how the game behaves once all pairs are matched.
+

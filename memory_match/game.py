@@ -358,6 +358,11 @@ class MemoryMatchGame:
                 val_surf = self.font.render(card.value, True, (0,0,0))
                 val_rect = val_surf.get_rect(center=card.rect.center)
                 self.screen.blit(val_surf, val_rect)
+            elif self.dev_mode:
+                val_surf = self.font.render(card.value, True, (100,100,100))
+                val_surf.set_alpha(80)
+                val_rect = val_surf.get_rect(center=card.rect.center)
+                self.screen.blit(val_surf, val_rect)
         self.draw_text_center(f'Time: {self.time_left}s', 20)
         self.draw_text_center(f'Moves: {self.moves}', 50)
         if self.message_timer > 0:
