@@ -21,10 +21,16 @@ LEVELS = [
     {'grid': (8, 8), 'time': 180},
 ]
 
+PLACEHOLDER_TIMES = [['AAA', 30], ['BBB', 35], ['CCC', 40]]
+PLACEHOLDER_MOVES = [['AAA', 4], ['BBB', 5], ['CCC', 6]]
+
 DEFAULT_DATA = {
     'unlocked_level': 1,
     'leaderboard': {
-        str(i): {'best_time': [], 'least_moves': []} for i in range(1, 11)
+        str(i): {
+            'best_time': PLACEHOLDER_TIMES.copy(),
+            'least_moves': PLACEHOLDER_MOVES.copy()
+        } for i in range(1, 11)
     },
     'settings': {
         'music_volume': 0.5,
@@ -49,8 +55,10 @@ def load_data() -> dict:
                 for i in range(1, 11):
                     key = str(i)
                     lvl = data['leaderboard'].setdefault(key, {})
-                    lvl.setdefault('best_time', [])
-                    lvl.setdefault('least_moves', [])
+                    if not isinstance(lvl.get('best_time'), list):
+                        lvl['best_time'] = []
+                    if not isinstance(lvl.get('least_moves'), list):
+                        lvl['least_moves'] = []
                 return data
         except Exception:
             pass
@@ -459,6 +467,10 @@ class MemoryMatchGame:
         self.finished_level = self.current_level
         level_key = str(self.finished_level)
         board = leaderboards.setdefault(level_key, {'best_time': [], 'least_moves': []})
+        if not isinstance(board.get('best_time'), list):
+            board['best_time'] = []
+        if not isinstance(board.get('least_moves'), list):
+            board['least_moves'] = []
         self.new_time_rank = None
         self.new_moves_rank = None
         if not self.dev_mode:
@@ -494,6 +506,10 @@ class MemoryMatchGame:
                             leaderboards = self.data.setdefault('leaderboard', {})
                             level_key = str(self.finished_level)
                             board = leaderboards.setdefault(level_key, {'best_time': [], 'least_moves': []})
+                            if not isinstance(board.get('best_time'), list):
+                                board['best_time'] = []
+                            if not isinstance(board.get('least_moves'), list):
+                                board['least_moves'] = []
                             if self.new_time_rank is not None:
                                 board['best_time'].insert(self.new_time_rank, [self.name_input, self.new_time_val])
                                 board['best_time'] = board['best_time'][:20]
@@ -558,6 +574,10 @@ class MemoryMatchGame:
             board = leaderboards.get(level_key, {})
             times = board.get('best_time', [])
             moves = board.get('least_moves', [])
+            if not isinstance(times, list):
+                times = []
+            if not isinstance(moves, list):
+                moves = []
             title = self.large_font.render(f'Level {level_key} Leaderboard', True, (255,255,255))
             self.screen.blit(title, title.get_rect(center=(self.width//2, 50)))
             header_t = self.font.render('Best Time (s)', True, (255,255,255))

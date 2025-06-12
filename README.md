@@ -16,7 +16,7 @@ python main.py
 A "Levels" button on the main menu opens a screen where you can choose from all ten levels. Locked levels appear grey and are unclickable until unlocked by completing earlier stages.
 
 ## Viewing Leaderboards
-Choose **Leaderboards** from the main menu to select which level's rankings to view. Each level maintains its own top 20 times and move counts.
+Choose **Leaderboards** from the main menu to select which level's rankings to view. Each level maintains its own top 20 times and move counts. The game starts with a few placeholder scores so the tables are never empty.
 
 ## Developer Mode
 Press the small **Dev** button in the bottom-right corner of the menu or level screen. Enter `1 2 3 4 5` on the keypad and press **Submit** to unlock every level temporarily for testing. When Dev mode is on, the button label changes to **Normal** so you can toggle it back off.
