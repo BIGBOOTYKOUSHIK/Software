@@ -282,11 +282,23 @@ class MemoryMatchGame:
         bg_opts = list(BACKGROUND_OPTIONS.keys())
         word_opts = list(WORD_OPTIONS.keys())
         theme_opts = list(CARD_THEMES.keys())
-        bg_idx = bg_opts.index(self.data['settings'].get('background', 'Blue'))
-        word_idx = word_opts.index(
-            self.data['settings'].get('word_color', 'White'))
-        theme_idx = theme_opts.index(
-            self.data['settings'].get('theme', 'Numbers'))
+        bg_val = self.data['settings'].get('background', 'Blue')
+        if bg_val not in bg_opts:
+            bg_val = 'Blue'
+            self.data['settings']['background'] = bg_val
+        bg_idx = bg_opts.index(bg_val)
+
+        word_val = self.data['settings'].get('word_color', 'White')
+        if word_val not in word_opts:
+            word_val = 'White'
+            self.data['settings']['word_color'] = word_val
+        word_idx = word_opts.index(word_val)
+
+        theme_val = self.data['settings'].get('theme', 'Numbers')
+        if theme_val not in theme_opts:
+            theme_val = 'Numbers'
+            self.data['settings']['theme'] = theme_val
+        theme_idx = theme_opts.index(theme_val)
         while self.state == 'settings':
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
@@ -745,13 +757,21 @@ class MemoryMatchGame:
 
     def update_colors(self):
         bg_key = self.data['settings'].get('background', 'Blue')
+        if bg_key not in BACKGROUND_OPTIONS:
+            bg_key = 'Blue'
+            self.data['settings']['background'] = bg_key
         word_key = self.data['settings'].get('word_color', 'White')
+        if word_key not in WORD_OPTIONS:
+            word_key = 'White'
+            self.data['settings']['word_color'] = word_key
         self.bg_color = BACKGROUND_OPTIONS.get(bg_key, MENU_BG)
         self.word_color = WORD_OPTIONS.get(word_key, (255, 255, 255))
-        self.card_theme = CARD_THEMES.get(
-            self.data['settings'].get('theme', 'Numbers'),
-            CARD_THEMES['Numbers'],
-        )
+
+        theme_key = self.data['settings'].get('theme', 'Numbers')
+        if theme_key not in CARD_THEMES:
+            theme_key = 'Numbers'
+            self.data['settings']['theme'] = theme_key
+        self.card_theme = CARD_THEMES[theme_key]
 
     def leaderboard_loop(self):
         while self.state == 'leaderboard':

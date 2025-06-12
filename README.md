@@ -38,5 +38,6 @@ cleaner appearance.
 Choose **Settings** from the main menu to customize the game's appearance.
 You can cycle through several background colors and text colors. The card
 theme can also be changed between **Numbers**, **Letters**, **Shapes** and
-**Animals**. Your selections are stored in the save file so the game remembers
-them next time.
+**Animals**. If a saved theme is missing, the game falls back to **Numbers**.
+Your selections are stored in the save file so the game remembers them next
+time.
