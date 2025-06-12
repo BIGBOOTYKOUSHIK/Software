@@ -25,3 +25,6 @@ The keypad shows digits in a familiar phone layout with a `0` key and larger **S
 
 While playing in Dev mode, hidden cards display faint outlines of their values, making it easy to verify matches during development. Use this mode to reveal card numbers for debugging.
 
+
+## Visual Improvements
+Cards and menus now use consistent theme colors. Matched messages fade out smoothly for a polished look.
