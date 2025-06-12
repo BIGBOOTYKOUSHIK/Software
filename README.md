@@ -12,6 +12,9 @@ Run the game with:
 python main.py
 ```
 
+The **Continue** option now resumes the last level you played instead of always
+starting at the highest unlocked level.
+
 ## Level Selection
 A "Levels" button on the main menu opens a screen where you can choose from all ten levels. Locked levels appear grey and are unclickable until unlocked by completing earlier stages.
 
@@ -27,4 +30,6 @@ While playing in Dev mode, hidden cards display faint outlines of their values, 
 
 
 ## Visual Improvements
-Cards and menus now use consistent theme colors. Matched messages fade out smoothly for a polished look.
+Cards and menus now use consistent theme colors. Matched messages fade out
+smoothly for a polished look. Buttons are drawn inside bordered boxes for a
+cleaner appearance.

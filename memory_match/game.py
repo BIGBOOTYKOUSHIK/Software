@@ -26,10 +26,11 @@ PLACEHOLDER_MOVES = [['AAA', 4], ['BBB', 5], ['CCC', 6]]
 
 DEFAULT_DATA = {
     'unlocked_level': 1,
+    'current_level': 1,
     'leaderboard': {
         str(i): {
             'best_time': PLACEHOLDER_TIMES.copy(),
-            'least_moves': PLACEHOLDER_MOVES.copy()
+            'least_moves': PLACEHOLDER_MOVES.copy(),
         } for i in range(1, 11)
     },
     'settings': {
@@ -38,7 +39,7 @@ DEFAULT_DATA = {
         'theme': 'light',
         'timer_enabled': True,
         'fullscreen': False,
-    }
+    },
 }
 
 CELEBRATIONS = [
@@ -72,6 +73,8 @@ def load_data() -> dict:
                         lvl['best_time'] = []
                     if not isinstance(lvl.get('least_moves'), list):
                         lvl['least_moves'] = []
+                if not isinstance(data.get('current_level'), int):
+                    data['current_level'] = 1
                 return data
         except Exception:
             pass
@@ -157,6 +160,7 @@ class MemoryMatchGame:
     def draw_menu_button(self):
         self.menu_rect = pygame.Rect(10, 10, 80, 30)
         pygame.draw.rect(self.screen, BUTTON_COLOR, self.menu_rect)
+        pygame.draw.rect(self.screen, (200, 200, 200), self.menu_rect, 2)
         txt = self.font.render('Menu', True, (255, 255, 255))
         self.screen.blit(txt, txt.get_rect(center=self.menu_rect.center))
 
@@ -164,12 +168,14 @@ class MemoryMatchGame:
         label = 'Normal' if self.dev_mode else 'Dev'
         self.dev_rect = pygame.Rect(self.width - 100, self.height - 40, 90, 30)
         pygame.draw.rect(self.screen, BUTTON_COLOR, self.dev_rect)
+        pygame.draw.rect(self.screen, (200, 200, 200), self.dev_rect, 2)
         txt = self.font.render(label, True, (0, 0, 0))
         self.screen.blit(txt, txt.get_rect(center=self.dev_rect.center))
 
     def draw_back_button(self):
         self.back_rect = pygame.Rect(100, 10, 80, 30)
         pygame.draw.rect(self.screen, BUTTON_COLOR, self.back_rect)
+        pygame.draw.rect(self.screen, (200, 200, 200), self.back_rect, 2)
         txt = self.font.render('Back', True, (255, 255, 255))
         self.screen.blit(txt, txt.get_rect(center=self.back_rect.center))
 
@@ -189,9 +195,9 @@ class MemoryMatchGame:
                         self.state = 'levels'
                     elif (
                         self.continue_rect.collidepoint(mx, my)
-                        and self.data['unlocked_level'] > 1
+                        and 'current_level' in self.data
                     ):
-                        self.current_level = self.data['unlocked_level']
+                        self.current_level = self.data.get('current_level', 1)
                         self.start_level(self.current_level)
                         self.state = 'play'
                     elif self.leader_rect.collidepoint(mx, my):
@@ -215,16 +221,10 @@ class MemoryMatchGame:
             self.draw_text_center('Memory Match', 100, self.large_font)
             self.play_rect = self.draw_button('Play', 240)
             self.levels_rect = self.draw_button('Levels', 280)
-            cont_text = 'Continue' if self.data[
-                'unlocked_level'] > 1 else 'Continue (locked)'
-            color = (
-                255,
-                255,
-                255) if self.data['unlocked_level'] > 1 else (
-                150,
-                150,
-                150)
-            self.continue_rect = self.draw_button(cont_text, 320, color)
+            can_continue = 'current_level' in self.data
+            cont_text = 'Continue' if can_continue else 'Continue (locked)'
+            text_color = (255, 255, 255) if can_continue else (150, 150, 150)
+            self.continue_rect = self.draw_button(cont_text, 320, text_color)
             self.leader_rect = self.draw_button('Leaderboards', 360)
             self.exit_rect = self.draw_button('Exit', 400)
             self.draw_menu_button()
@@ -232,18 +232,15 @@ class MemoryMatchGame:
             pygame.display.flip()
             self.clock.tick(60)
 
-    def draw_button(
-        self,
-        text: str,
-        y: int,
-        color=(
-            255,
-            255,
-            255)) -> pygame.Rect:
+    def draw_button(self, text: str, y: int,
+                    color=(255, 255, 255)) -> pygame.Rect:
         surface = self.font.render(text, True, color)
         rect = surface.get_rect(center=(self.width // 2, y))
+        button_rect = rect.inflate(20, 10)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, button_rect)
+        pygame.draw.rect(self.screen, (200, 200, 200), button_rect, 2)
         self.screen.blit(surface, rect)
-        return rect
+        return button_rect
 
     def levels_loop(self):
         tile_w = 100
@@ -298,6 +295,7 @@ class MemoryMatchGame:
                     )
                     color = CARD_BACK_COLOR if unlocked else LOCKED_COLOR
                     pygame.draw.rect(self.screen, color, rect)
+                    pygame.draw.rect(self.screen, (200, 200, 200), rect, 2)
                     text = self.font.render(str(level), True, (0, 0, 0))
                     text_rect = text.get_rect(center=rect.center)
                     self.screen.blit(text, text_rect)
@@ -352,6 +350,7 @@ class MemoryMatchGame:
                                        (tile_h + margin_y), tile_w, tile_h)
                     color = (180, 180, 180)
                     pygame.draw.rect(self.screen, color, rect)
+                    pygame.draw.rect(self.screen, (200, 200, 200), rect, 2)
                     text = self.font.render(str(level), True, (0, 0, 0))
                     text_rect = text.get_rect(center=rect.center)
                     self.screen.blit(text, text_rect)
@@ -367,6 +366,8 @@ class MemoryMatchGame:
     # -------- Gameplay ---------
     def start_new_game(self):
         self.current_level = 1
+        self.data['current_level'] = 1
+        save_data(self.data)
         self.start_level(self.current_level)
 
     def start_level(self, level: int):
@@ -393,6 +394,9 @@ class MemoryMatchGame:
         self.time_limit = config['time']
         self.start_ticks = pygame.time.get_ticks()
         self.time_left = self.time_limit
+        if not self.dev_mode:
+            self.data['current_level'] = level
+            save_data(self.data)
 
     def play_loop(self):
         while self.state == 'play':
@@ -551,10 +555,12 @@ class MemoryMatchGame:
             if not self.dev_mode:
                 self.data['unlocked_level'] = max(
                     self.data['unlocked_level'], self.current_level)
+                self.data['current_level'] = self.current_level
                 save_data(self.data)
             self.state = 'level_complete'
         else:
             if not self.dev_mode:
+                self.data['current_level'] = self.current_level
                 save_data(self.data)
             self.state = 'menu'
 
