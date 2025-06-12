@@ -398,8 +398,14 @@ class MemoryMatchGame:
     def finish_level(self):
         time_taken = self.time_limit - self.time_left
         board = self.data.setdefault('leaderboard', {
-            'best_time': [], 'least_moves': []
+            'best_time': [],
+            'least_moves': []
         })
+        if not isinstance(board, dict):
+            board = {'best_time': [], 'least_moves': []}
+            self.data['leaderboard'] = board
+        board.setdefault('best_time', [])
+        board.setdefault('least_moves', [])
         self.new_time_rank = None
         self.new_moves_rank = None
         if not self.dev_mode:
