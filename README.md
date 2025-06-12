@@ -32,12 +32,13 @@ While playing in Dev mode, hidden cards display faint outlines of their values, 
 ## Visual Improvements
 Cards and menus now use consistent theme colors. Matched messages fade out
 smoothly for a polished look. Buttons are drawn inside bordered boxes for a
-cleaner appearance.
+cleaner appearance. Each card includes a white border so it stands out
+against any background.
 
 ## Settings
 Choose **Settings** from the main menu to customize the game's appearance.
 You can cycle through several background colors and text colors. The card
-theme can be changed between **Numbers**, **Letters**, **Emojis** and
+theme can be changed between **Numbers**, **Letters**, **Colors** and
 **Animals**. If a saved theme is missing, the game falls back to **Numbers**.
 Your selections are stored in the save file so the game remembers them next
 time.

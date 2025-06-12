@@ -68,11 +68,12 @@ CARD_THEMES = {
     'Letters': (
         list('ABCDEFGHIJKLMNOPQRSTUVWXYZ') + [f'{c}{c}' for c in 'ABCDEF']
     ),
-    'Emojis': [
-        '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣',
-        '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🤩',
-        '😘', '😗', '😜', '🤪', '🤨', '🧐', '🤓', '😎',
-        '😏', '😒', '😞', '😔', '😖', '😢', '😭', '😡'
+    'Colors': [
+        'Red', 'Green', 'Blue', 'Yellow', 'Orange', 'Purple', 'Pink', 'Brown',
+        'Gray', 'Black', 'White', 'Cyan', 'Magenta', 'Lime', 'Maroon', 'Olive',
+        'Navy', 'Teal', 'Aqua', 'Lavender', 'Gold', 'Silver', 'Coral',
+        'Indigo', 'Ivory', 'Khaki', 'Mint', 'Moccasin', 'Orchid', 'Plum',
+        'Salmon', 'Turquoise'
     ],
     'Animals': [
         'Cat', 'Dog', 'Cow', 'Pig', 'Fox', 'Bear', 'Lion', 'Tiger',
@@ -601,6 +602,7 @@ class MemoryMatchGame:
             if card.is_face_up or card.is_matched:
                 color = CARD_FACE_COLOR
             pygame.draw.rect(self.screen, color, card.rect)
+            pygame.draw.rect(self.screen, (255, 255, 255), card.rect, 2)
             if card.is_face_up or card.is_matched:
                 val_surf = self.font.render(card.value, True, (0, 0, 0))
                 val_rect = val_surf.get_rect(center=card.rect.center)
