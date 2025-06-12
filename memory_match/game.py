@@ -24,14 +24,7 @@ LEVELS = [
 DEFAULT_DATA = {
     'unlocked_level': 1,
     'leaderboard': {
-        'best_time': [
-            ['AAA', 40], ['BBB', 45], ['CCC', 50], ['DDD', 55], ['EEE', 60],
-            ['FFF', 65], ['GGG', 70], ['HHH', 75], ['III', 80], ['JJJ', 90]
-        ],
-        'least_moves': [
-            ['AAA', 30], ['BBB', 32], ['CCC', 34], ['DDD', 36], ['EEE', 38],
-            ['FFF', 40], ['GGG', 42], ['HHH', 44], ['III', 46], ['JJJ', 48]
-        ]
+        str(i): {'best_time': [], 'least_moves': []} for i in range(1, 11)
     },
     'settings': {
         'music_volume': 0.5,
@@ -50,10 +43,18 @@ def load_data() -> dict:
     if os.path.exists(SAVE_FILE):
         try:
             with open(SAVE_FILE, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                if 'leaderboard' not in data or not isinstance(data['leaderboard'], dict):
+                    data['leaderboard'] = {}
+                for i in range(1, 11):
+                    key = str(i)
+                    lvl = data['leaderboard'].setdefault(key, {})
+                    lvl.setdefault('best_time', [])
+                    lvl.setdefault('least_moves', [])
+                return data
         except Exception:
             pass
-    return DEFAULT_DATA.copy()
+    return json.loads(json.dumps(DEFAULT_DATA))
 
 def save_data(data: dict):
     with open(SAVE_FILE, 'w') as f:
@@ -100,6 +101,7 @@ class MemoryMatchGame:
         self.card_h = 0
         self.message: str = ''
         self.message_timer = 0
+        self.finished_level = 1
 
     def run(self):
         while True:
@@ -111,6 +113,8 @@ class MemoryMatchGame:
                 self.play_loop()
             elif self.state == 'level_complete':
                 self.level_complete_loop()
+            elif self.state == 'leader_select':
+                self.leader_select_loop()
             elif self.state == 'leaderboard':
                 self.leaderboard_loop()
             elif self.state == 'keypad':
@@ -157,7 +161,7 @@ class MemoryMatchGame:
                         self.start_level(self.current_level)
                         self.state = 'play'
                     elif self.leader_rect.collidepoint(mx, my):
-                        self.state = 'leaderboard'
+                        self.state = 'leader_select'
                     elif self.dev_rect.collidepoint(mx, my):
                         if self.dev_mode:
                             self.dev_mode = False
@@ -245,6 +249,60 @@ class MemoryMatchGame:
                     self.level_rects.append(rect)
                     level += 1
                     x += tile_w + margin_x
+            self.draw_menu_button()
+            self.draw_dev_button()
+            pygame.display.flip()
+            self.clock.tick(60)
+
+    def leader_select_loop(self):
+        tile_w = 100
+        tile_h = 60
+        margin_x = (self.width - tile_w * 5) // 6
+        margin_y = 40
+        while self.state == 'leader_select':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state = 'quit'
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mx, my = event.pos
+                    for idx, rect in enumerate(self.level_rects):
+                        if rect.collidepoint(mx, my):
+                            self.leader_level = idx + 1
+                            self.state = 'leaderboard'
+                            break
+                    if self.dev_rect.collidepoint(mx, my):
+                        if self.dev_mode:
+                            self.dev_mode = False
+                            self.data['unlocked_level'] = self.saved_unlocked
+                        else:
+                            self.prev_state = 'leader_select'
+                            self.keypad_input = ''
+                            self.state = 'keypad'
+                    if self.menu_rect.collidepoint(mx, my):
+                        self.state = 'menu'
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.state = 'menu'
+                    if event.key == pygame.K_F11:
+                        self.toggle_fullscreen()
+            self.screen.fill((30, 30, 80))
+            self.level_rects = []
+            y_start = 100
+            level = 1
+            for row in range(2):
+                x = margin_x
+                for col in range(5):
+                    rect = pygame.Rect(x, y_start + row * (tile_h + margin_y), tile_w, tile_h)
+                    color = (180, 180, 180)
+                    pygame.draw.rect(self.screen, color, rect)
+                    text = self.font.render(str(level), True, (0,0,0))
+                    text_rect = text.get_rect(center=rect.center)
+                    self.screen.blit(text, text_rect)
+                    self.level_rects.append(rect)
+                    level += 1
+                    x += tile_w + margin_x
+            self.draw_text_center('Select Level', 60)
             self.draw_menu_button()
             self.draw_dev_button()
             pygame.display.flip()
@@ -397,15 +455,10 @@ class MemoryMatchGame:
 
     def finish_level(self):
         time_taken = self.time_limit - self.time_left
-        board = self.data.setdefault('leaderboard', {
-            'best_time': [],
-            'least_moves': []
-        })
-        if not isinstance(board, dict):
-            board = {'best_time': [], 'least_moves': []}
-            self.data['leaderboard'] = board
-        board.setdefault('best_time', [])
-        board.setdefault('least_moves', [])
+        leaderboards = self.data.setdefault('leaderboard', {})
+        self.finished_level = self.current_level
+        level_key = str(self.finished_level)
+        board = leaderboards.setdefault(level_key, {'best_time': [], 'least_moves': []})
         self.new_time_rank = None
         self.new_moves_rank = None
         if not self.dev_mode:
@@ -438,7 +491,9 @@ class MemoryMatchGame:
                 if event.type == pygame.KEYDOWN:
                     if entering_name:
                         if event.key == pygame.K_RETURN and self.name_input:
-                            board = self.data.setdefault('leaderboard', {'best_time': [], 'least_moves': []})
+                            leaderboards = self.data.setdefault('leaderboard', {})
+                            level_key = str(self.finished_level)
+                            board = leaderboards.setdefault(level_key, {'best_time': [], 'least_moves': []})
                             if self.new_time_rank is not None:
                                 board['best_time'].insert(self.new_time_rank, [self.name_input, self.new_time_val])
                                 board['best_time'] = board['best_time'][:20]
@@ -498,10 +553,12 @@ class MemoryMatchGame:
                     if self.menu_rect.collidepoint(event.pos):
                         self.state = 'menu'
             self.screen.fill((40, 40, 60))
-            board = self.data.get('leaderboard', {})
+            leaderboards = self.data.get('leaderboard', {})
+            level_key = str(getattr(self, 'leader_level', 1))
+            board = leaderboards.get(level_key, {})
             times = board.get('best_time', [])
             moves = board.get('least_moves', [])
-            title = self.large_font.render('Leaderboards', True, (255,255,255))
+            title = self.large_font.render(f'Level {level_key} Leaderboard', True, (255,255,255))
             self.screen.blit(title, title.get_rect(center=(self.width//2, 50)))
             header_t = self.font.render('Best Time (s)', True, (255,255,255))
             header_m = self.font.render('Least Moves', True, (255,255,255))
