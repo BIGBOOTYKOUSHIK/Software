@@ -23,7 +23,16 @@ LEVELS = [
 
 DEFAULT_DATA = {
     'unlocked_level': 1,
-    'leaderboard': {},
+    'leaderboard': {
+        'best_time': [
+            ['AAA', 40], ['BBB', 45], ['CCC', 50], ['DDD', 55], ['EEE', 60],
+            ['FFF', 65], ['GGG', 70], ['HHH', 75], ['III', 80], ['JJJ', 90]
+        ],
+        'least_moves': [
+            ['AAA', 30], ['BBB', 32], ['CCC', 34], ['DDD', 36], ['EEE', 38],
+            ['FFF', 40], ['GGG', 42], ['HHH', 44], ['III', 46], ['JJJ', 48]
+        ]
+    },
     'settings': {
         'music_volume': 0.5,
         'sfx_volume': 0.5,
@@ -102,6 +111,8 @@ class MemoryMatchGame:
                 self.play_loop()
             elif self.state == 'level_complete':
                 self.level_complete_loop()
+            elif self.state == 'leaderboard':
+                self.leaderboard_loop()
             elif self.state == 'keypad':
                 self.keypad_loop()
             elif self.state == 'quit':
@@ -122,7 +133,7 @@ class MemoryMatchGame:
 
     def draw_dev_button(self):
         label = 'Normal' if self.dev_mode else 'Dev'
-        self.dev_rect = pygame.Rect(self.width - 80, self.height - 40, 70, 30)
+        self.dev_rect = pygame.Rect(self.width - 100, self.height - 40, 90, 30)
         pygame.draw.rect(self.screen, (80, 80, 80), self.dev_rect)
         txt = self.font.render(label, True, (0, 0, 0))
         self.screen.blit(txt, txt.get_rect(center=self.dev_rect.center))
@@ -145,6 +156,8 @@ class MemoryMatchGame:
                         self.current_level = self.data['unlocked_level']
                         self.start_level(self.current_level)
                         self.state = 'play'
+                    elif self.leader_rect.collidepoint(mx, my):
+                        self.state = 'leaderboard'
                     elif self.dev_rect.collidepoint(mx, my):
                         if self.dev_mode:
                             self.dev_mode = False
@@ -162,11 +175,12 @@ class MemoryMatchGame:
                         self.toggle_fullscreen()
             self.screen.fill((0, 50, 100))
             self.draw_text_center('Memory Match', 100, self.large_font)
-            self.play_rect = self.draw_button('Play', 250)
-            self.levels_rect = self.draw_button('Levels', 300)
+            self.play_rect = self.draw_button('Play', 240)
+            self.levels_rect = self.draw_button('Levels', 280)
             cont_text = 'Continue' if self.data['unlocked_level'] > 1 else 'Continue (locked)'
             color = (255,255,255) if self.data['unlocked_level'] > 1 else (150,150,150)
-            self.continue_rect = self.draw_button(cont_text, 350, color)
+            self.continue_rect = self.draw_button(cont_text, 320, color)
+            self.leader_rect = self.draw_button('Leaderboards', 360)
             self.exit_rect = self.draw_button('Exit', 400)
             self.draw_menu_button()
             self.draw_dev_button()
@@ -373,15 +387,30 @@ class MemoryMatchGame:
     def check_complete(self) -> bool:
         return all(card.is_matched for card in self.cards)
 
+    def get_rank(self, table: List[List], value: int) -> Optional[int]:
+        for i, (_, val) in enumerate(table):
+            if value < val:
+                return i
+        if len(table) < 20:
+            return len(table)
+        return None
+
     def finish_level(self):
-        level_key = str(self.current_level)
-        board = self.data.setdefault('leaderboard', {})
-        entry = board.get(level_key, {'best_time': None, 'least_moves': None})
-        if entry['best_time'] is None or self.time_left > 0 and self.time_left < entry['best_time']:
-            entry['best_time'] = self.time_limit - self.time_left
-        if entry['least_moves'] is None or self.moves < entry['least_moves']:
-            entry['least_moves'] = self.moves
-        board[level_key] = entry
+        time_taken = self.time_limit - self.time_left
+        board = self.data.setdefault('leaderboard', {
+            'best_time': [], 'least_moves': []
+        })
+        self.new_time_rank = None
+        self.new_moves_rank = None
+        if not self.dev_mode:
+            self.new_time_rank = self.get_rank(board['best_time'], time_taken)
+            self.new_moves_rank = self.get_rank(board['least_moves'], self.moves)
+            self.new_time_val = time_taken
+            self.new_moves_val = self.moves
+            self.name_input = ''
+            self.ask_name = self.new_time_rank is not None or self.new_moves_rank is not None
+        else:
+            self.ask_name = False
         if self.current_level < len(LEVELS):
             self.current_level += 1
             if not self.dev_mode:
@@ -396,22 +425,45 @@ class MemoryMatchGame:
     def level_complete_loop(self):
         while self.state == 'level_complete':
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
+            entering_name = self.ask_name
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE:
-                        self.start_level(self.current_level)
-                        self.state = 'play'
-                    if event.key == pygame.K_ESCAPE:
-                        self.state = 'menu'
+                    if entering_name:
+                        if event.key == pygame.K_RETURN and self.name_input:
+                            board = self.data.setdefault('leaderboard', {'best_time': [], 'least_moves': []})
+                            if self.new_time_rank is not None:
+                                board['best_time'].insert(self.new_time_rank, [self.name_input, self.new_time_val])
+                                board['best_time'] = board['best_time'][:20]
+                            if self.new_moves_rank is not None:
+                                board['least_moves'].insert(self.new_moves_rank, [self.name_input, self.new_moves_val])
+                                board['least_moves'] = board['least_moves'][:20]
+                            save_data(self.data)
+                            entering_name = False
+                            self.ask_name = False
+                        elif event.key == pygame.K_BACKSPACE:
+                            self.name_input = self.name_input[:-1]
+                        else:
+                            if event.unicode.isprintable() and len(self.name_input) < 12:
+                                self.name_input += event.unicode
+                    else:
+                        if event.key == pygame.K_SPACE:
+                            self.start_level(self.current_level)
+                            self.state = 'play'
+                        if event.key == pygame.K_ESCAPE:
+                            self.state = 'menu'
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.menu_rect.collidepoint(event.pos):
                         self.state = 'menu'
             self.screen.fill((0, 100, 0))
-            self.draw_text_center('Level Complete!', 200, self.large_font)
-            self.draw_text_center('Press SPACE for next level', 300)
-            self.draw_text_center('Press ESC for menu', 350)
+            self.draw_text_center('Level Complete!', 180, self.large_font)
+            if entering_name:
+                self.draw_text_center('New leaderboard score! Enter name:', 260)
+                self.draw_text_center(self.name_input + '|', 300)
+            else:
+                self.draw_text_center('Press SPACE for next level', 260)
+                self.draw_text_center('Press ESC for menu', 300)
             self.draw_menu_button()
             pygame.display.flip()
             self.clock.tick(60)
@@ -424,6 +476,47 @@ class MemoryMatchGame:
             self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
         else:
             self.screen = pygame.display.set_mode((self.width, self.height))
+
+    def leaderboard_loop(self):
+        while self.state == 'leaderboard':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state = 'quit'
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.state = 'menu'
+                    if event.key == pygame.K_F11:
+                        self.toggle_fullscreen()
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.menu_rect.collidepoint(event.pos):
+                        self.state = 'menu'
+            self.screen.fill((40, 40, 60))
+            board = self.data.get('leaderboard', {})
+            times = board.get('best_time', [])
+            moves = board.get('least_moves', [])
+            title = self.large_font.render('Leaderboards', True, (255,255,255))
+            self.screen.blit(title, title.get_rect(center=(self.width//2, 50)))
+            header_t = self.font.render('Best Time (s)', True, (255,255,255))
+            header_m = self.font.render('Least Moves', True, (255,255,255))
+            self.screen.blit(header_t, header_t.get_rect(center=(self.width//4, 100)))
+            self.screen.blit(header_m, header_m.get_rect(center=(3*self.width//4, 100)))
+            y = 130
+            max_len = max(len(times), len(moves))
+            for i in range(max_len):
+                if i < len(times):
+                    name, val = times[i]
+                    txt = self.font.render(f'{i+1}. {name} - {val}', True, (255,255,255))
+                    self.screen.blit(txt, txt.get_rect(midleft=(20, y)))
+                if i < len(moves):
+                    name, val = moves[i]
+                    txt = self.font.render(f'{i+1}. {name} - {val}', True, (255,255,255))
+                    self.screen.blit(txt, txt.get_rect(midleft=(self.width//2 + 20, y)))
+                y += 30
+            self.draw_menu_button()
+            self.draw_dev_button()
+            pygame.display.flip()
+            self.clock.tick(60)
 
     def keypad_loop(self):
         buttons: List[Tuple[pygame.Rect, str]] = []
