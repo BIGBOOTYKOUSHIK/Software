@@ -150,6 +150,12 @@ class MemoryMatchGame:
         txt = self.font.render(label, True, (0, 0, 0))
         self.screen.blit(txt, txt.get_rect(center=self.dev_rect.center))
 
+    def draw_back_button(self):
+        self.back_rect = pygame.Rect(100, 10, 80, 30)
+        pygame.draw.rect(self.screen, (80, 80, 80), self.back_rect)
+        txt = self.font.render('Back', True, (255, 255, 255))
+        self.screen.blit(txt, txt.get_rect(center=self.back_rect.center))
+
     # -------- Menu ---------
     def menu_loop(self):
         while self.state == 'menu':
@@ -557,6 +563,7 @@ class MemoryMatchGame:
     def leaderboard_loop(self):
         while self.state == 'leaderboard':
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
+            self.back_rect = pygame.Rect(100, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
@@ -568,6 +575,8 @@ class MemoryMatchGame:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.menu_rect.collidepoint(event.pos):
                         self.state = 'menu'
+                    elif self.back_rect.collidepoint(event.pos):
+                        self.state = 'leader_select'
             self.screen.fill((40, 40, 60))
             leaderboards = self.data.get('leaderboard', {})
             level_key = str(getattr(self, 'leader_level', 1))
@@ -597,6 +606,7 @@ class MemoryMatchGame:
                     self.screen.blit(txt, txt.get_rect(midleft=(self.width//2 + 20, y)))
                 y += 30
             self.draw_menu_button()
+            self.draw_back_button()
             self.draw_dev_button()
             pygame.display.flip()
             self.clock.tick(60)
