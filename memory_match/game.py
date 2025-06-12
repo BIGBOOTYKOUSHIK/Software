@@ -76,6 +76,7 @@ class MemoryMatchGame:
         self.state = 'menu'
         self.current_level = 1
         self.dev_mode = False
+        self.saved_unlocked = self.data.get('unlocked_level', 1)
         self.keypad_input = ''
         self.prev_state = None
         self.cards: List[Card] = []
@@ -113,9 +114,23 @@ class MemoryMatchGame:
         rect = surface.get_rect(center=(self.width//2, y))
         self.screen.blit(surface, rect)
 
+    def draw_menu_button(self):
+        self.menu_rect = pygame.Rect(10, 10, 80, 30)
+        pygame.draw.rect(self.screen, (80, 80, 80), self.menu_rect)
+        txt = self.font.render('Menu', True, (255, 255, 255))
+        self.screen.blit(txt, txt.get_rect(center=self.menu_rect.center))
+
+    def draw_dev_button(self):
+        label = 'Normal' if self.dev_mode else 'Dev'
+        self.dev_rect = pygame.Rect(self.width - 80, self.height - 40, 70, 30)
+        pygame.draw.rect(self.screen, (80, 80, 80), self.dev_rect)
+        txt = self.font.render(label, True, (0, 0, 0))
+        self.screen.blit(txt, txt.get_rect(center=self.dev_rect.center))
+
     # -------- Menu ---------
     def menu_loop(self):
         while self.state == 'menu':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
@@ -131,9 +146,15 @@ class MemoryMatchGame:
                         self.start_level(self.current_level)
                         self.state = 'play'
                     elif self.dev_rect.collidepoint(mx, my):
-                        self.prev_state = 'menu'
-                        self.keypad_input = ''
-                        self.state = 'keypad'
+                        if self.dev_mode:
+                            self.dev_mode = False
+                            self.data['unlocked_level'] = self.saved_unlocked
+                        else:
+                            self.prev_state = 'menu'
+                            self.keypad_input = ''
+                            self.state = 'keypad'
+                    elif self.menu_rect.collidepoint(mx, my):
+                        self.state = 'menu'
                     elif self.exit_rect.collidepoint(mx, my):
                         self.state = 'quit'
                 if event.type == pygame.KEYDOWN:
@@ -147,11 +168,8 @@ class MemoryMatchGame:
             color = (255,255,255) if self.data['unlocked_level'] > 1 else (150,150,150)
             self.continue_rect = self.draw_button(cont_text, 350, color)
             self.exit_rect = self.draw_button('Exit', 400)
-            self.dev_rect = pygame.Rect(self.width-60, self.height-40, 50, 30)
-            pygame.draw.rect(self.screen, (80,80,80), self.dev_rect)
-            dev_surf = self.font.render('Dev', True, (0,0,0))
-            dev_rect2 = dev_surf.get_rect(center=self.dev_rect.center)
-            self.screen.blit(dev_surf, dev_rect2)
+            self.draw_menu_button()
+            self.draw_dev_button()
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -167,6 +185,7 @@ class MemoryMatchGame:
         margin_x = (self.width - tile_w * 5) // 6
         margin_y = 40
         while self.state == 'levels':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
@@ -181,9 +200,15 @@ class MemoryMatchGame:
                                 self.state = 'play'
                             break
                     if self.dev_rect.collidepoint(mx, my):
-                        self.prev_state = 'levels'
-                        self.keypad_input = ''
-                        self.state = 'keypad'
+                        if self.dev_mode:
+                            self.dev_mode = False
+                            self.data['unlocked_level'] = self.saved_unlocked
+                        else:
+                            self.prev_state = 'levels'
+                            self.keypad_input = ''
+                            self.state = 'keypad'
+                    if self.menu_rect.collidepoint(mx, my):
+                        self.state = 'menu'
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.state = 'menu'
@@ -206,10 +231,8 @@ class MemoryMatchGame:
                     self.level_rects.append(rect)
                     level += 1
                     x += tile_w + margin_x
-            self.dev_rect = pygame.Rect(self.width-60, self.height-40, 50, 30)
-            pygame.draw.rect(self.screen, (80,80,80), self.dev_rect)
-            dev_surf = self.font.render('Dev', True, (0,0,0))
-            self.screen.blit(dev_surf, dev_surf.get_rect(center=self.dev_rect.center))
+            self.draw_menu_button()
+            self.draw_dev_button()
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -245,12 +268,16 @@ class MemoryMatchGame:
 
     def play_loop(self):
         while self.state == 'play':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
             dt = self.clock.tick(60)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    self.handle_click(event.pos)
+                    if self.menu_rect.collidepoint(event.pos):
+                        self.state = 'menu'
+                    else:
+                        self.handle_click(event.pos)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.state = 'menu'
@@ -258,6 +285,7 @@ class MemoryMatchGame:
                         self.toggle_fullscreen()
             self.update_game(dt)
             self.draw_game()
+            self.draw_menu_button()
             if self.check_complete():
                 self.finish_level()
             elif self.time_left <= 0:
@@ -351,15 +379,18 @@ class MemoryMatchGame:
         board[level_key] = entry
         if self.current_level < len(LEVELS):
             self.current_level += 1
-            self.data['unlocked_level'] = max(self.data['unlocked_level'], self.current_level)
-            save_data(self.data)
+            if not self.dev_mode:
+                self.data['unlocked_level'] = max(self.data['unlocked_level'], self.current_level)
+                save_data(self.data)
             self.state = 'level_complete'
         else:
-            save_data(self.data)
+            if not self.dev_mode:
+                save_data(self.data)
             self.state = 'menu'
 
     def level_complete_loop(self):
         while self.state == 'level_complete':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
@@ -369,10 +400,14 @@ class MemoryMatchGame:
                         self.state = 'play'
                     if event.key == pygame.K_ESCAPE:
                         self.state = 'menu'
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.menu_rect.collidepoint(event.pos):
+                        self.state = 'menu'
             self.screen.fill((0, 100, 0))
             self.draw_text_center('Level Complete!', 200, self.large_font)
             self.draw_text_center('Press SPACE for next level', 300)
             self.draw_text_center('Press ESC for menu', 350)
+            self.draw_menu_button()
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -386,28 +421,32 @@ class MemoryMatchGame:
             self.screen = pygame.display.set_mode((self.width, self.height))
 
     def keypad_loop(self):
-        buttons = []
+        buttons: List[Tuple[pygame.Rect, str]] = []
         padding = 10
         btn_w = 60
         btn_h = 40
         start_x = self.width//2 - (btn_w*3 + padding*2)//2
-        start_y = self.height//2 - (btn_h*4 + padding*3)//2
-        labels = ['1','2','3','4','5','6','7','8','9','0','Submit','Cancel']
+        start_y = self.height//2 - (btn_h*5 + padding*4)//2
+        numbers = ['1','2','3','4','5','6','7','8','9','0']
+        long_w = int(btn_w * 1.5)
         while self.state == 'keypad':
+            self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state = 'quit'
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     mx,my = event.pos
-                    for i, rect in enumerate(buttons):
+                    if self.menu_rect.collidepoint(mx, my):
+                        self.state = self.prev_state
+                        continue
+                    for rect, label in buttons:
                         if rect.collidepoint(mx,my):
-                            label = labels[i]
                             if label.isdigit():
                                 self.keypad_input += label
                             elif label == 'Submit':
                                 if self.keypad_input == '12345':
+                                    self.saved_unlocked = self.data['unlocked_level']
                                     self.dev_mode = True
-                                    self.data['unlocked_level'] = len(LEVELS)
                                 self.state = self.prev_state
                             elif label == 'Cancel':
                                 self.state = self.prev_state
@@ -417,19 +456,38 @@ class MemoryMatchGame:
             self.screen.fill((0,0,0))
             buttons = []
             idx = 0
-            for row in range(4):
+            for row in range(3):
                 for col in range(3):
                     x = start_x + col*(btn_w+padding)
                     y = start_y + row*(btn_h+padding)
-                    rect = pygame.Rect(x,y,btn_w,btn_h)
-                    buttons.append(rect)
+                    rect = pygame.Rect(x, y, btn_w, btn_h)
+                    buttons.append((rect, numbers[idx]))
                     pygame.draw.rect(self.screen, (150,150,150), rect)
-                    label = labels[idx]
-                    text = self.font.render(label, True, (0,0,0))
+                    text = self.font.render(numbers[idx], True, (0,0,0))
                     self.screen.blit(text, text.get_rect(center=rect.center))
                     idx += 1
+            # row with 0
+            zero_x = start_x + btn_w + padding
+            zero_rect = pygame.Rect(zero_x, start_y + 3*(btn_h+padding), btn_w, btn_h)
+            buttons.append((zero_rect, '0'))
+            pygame.draw.rect(self.screen, (150,150,150), zero_rect)
+            txt0 = self.font.render('0', True, (0,0,0))
+            self.screen.blit(txt0, txt0.get_rect(center=zero_rect.center))
+            # submit and cancel
+            submit_x = self.width//2 - (2*long_w + padding)//2
+            submit_rect = pygame.Rect(submit_x, start_y + 4*(btn_h+padding), long_w, btn_h)
+            buttons.append((submit_rect, 'Submit'))
+            pygame.draw.rect(self.screen, (150,150,150), submit_rect)
+            txts = self.font.render('Submit', True, (0,0,0))
+            self.screen.blit(txts, txts.get_rect(center=submit_rect.center))
+            cancel_rect = pygame.Rect(submit_x + long_w + padding, start_y + 4*(btn_h+padding), long_w, btn_h)
+            buttons.append((cancel_rect, 'Cancel'))
+            pygame.draw.rect(self.screen, (150,150,150), cancel_rect)
+            txtc = self.font.render('Cancel', True, (0,0,0))
+            self.screen.blit(txtc, txtc.get_rect(center=cancel_rect.center))
             input_surf = self.font.render(self.keypad_input, True, (255,255,255))
             self.screen.blit(input_surf, (start_x, start_y - 40))
+            self.draw_menu_button()
             pygame.display.flip()
             self.clock.tick(60)
 
