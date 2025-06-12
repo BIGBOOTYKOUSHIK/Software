@@ -75,6 +75,9 @@ class MemoryMatchGame:
         self.large_font = pygame.font.SysFont(None, 72)
         self.state = 'menu'
         self.current_level = 1
+        self.dev_mode = False
+        self.keypad_input = ''
+        self.prev_state = None
         self.cards: List[Card] = []
         self.first_card: Optional[Card] = None
         self.second_card: Optional[Card] = None
@@ -92,10 +95,14 @@ class MemoryMatchGame:
         while True:
             if self.state == 'menu':
                 self.menu_loop()
+            elif self.state == 'levels':
+                self.levels_loop()
             elif self.state == 'play':
                 self.play_loop()
             elif self.state == 'level_complete':
                 self.level_complete_loop()
+            elif self.state == 'keypad':
+                self.keypad_loop()
             elif self.state == 'quit':
                 break
         pygame.quit()
@@ -117,10 +124,16 @@ class MemoryMatchGame:
                     if self.play_rect.collidepoint(mx, my):
                         self.start_new_game()
                         self.state = 'play'
+                    elif self.levels_rect.collidepoint(mx, my):
+                        self.state = 'levels'
                     elif self.continue_rect.collidepoint(mx, my) and self.data['unlocked_level'] > 1:
                         self.current_level = self.data['unlocked_level']
                         self.start_level(self.current_level)
                         self.state = 'play'
+                    elif self.dev_rect.collidepoint(mx, my):
+                        self.prev_state = 'menu'
+                        self.keypad_input = ''
+                        self.state = 'keypad'
                     elif self.exit_rect.collidepoint(mx, my):
                         self.state = 'quit'
                 if event.type == pygame.KEYDOWN:
@@ -129,10 +142,16 @@ class MemoryMatchGame:
             self.screen.fill((0, 50, 100))
             self.draw_text_center('Memory Match', 100, self.large_font)
             self.play_rect = self.draw_button('Play', 250)
+            self.levels_rect = self.draw_button('Levels', 300)
             cont_text = 'Continue' if self.data['unlocked_level'] > 1 else 'Continue (locked)'
             color = (255,255,255) if self.data['unlocked_level'] > 1 else (150,150,150)
-            self.continue_rect = self.draw_button(cont_text, 320, color)
-            self.exit_rect = self.draw_button('Exit', 390)
+            self.continue_rect = self.draw_button(cont_text, 350, color)
+            self.exit_rect = self.draw_button('Exit', 400)
+            self.dev_rect = pygame.Rect(self.width-60, self.height-40, 50, 30)
+            pygame.draw.rect(self.screen, (80,80,80), self.dev_rect)
+            dev_surf = self.font.render('Dev', True, (0,0,0))
+            dev_rect2 = dev_surf.get_rect(center=self.dev_rect.center)
+            self.screen.blit(dev_surf, dev_rect2)
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -141,6 +160,58 @@ class MemoryMatchGame:
         rect = surface.get_rect(center=(self.width//2, y))
         self.screen.blit(surface, rect)
         return rect
+
+    def levels_loop(self):
+        tile_w = 100
+        tile_h = 60
+        margin_x = (self.width - tile_w * 5) // 6
+        margin_y = 40
+        while self.state == 'levels':
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state = 'quit'
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mx, my = event.pos
+                    for idx, rect in enumerate(self.level_rects):
+                        if rect.collidepoint(mx, my):
+                            level = idx + 1
+                            if level <= self.data['unlocked_level'] or self.dev_mode:
+                                self.current_level = level
+                                self.start_level(level)
+                                self.state = 'play'
+                            break
+                    if self.dev_rect.collidepoint(mx, my):
+                        self.prev_state = 'levels'
+                        self.keypad_input = ''
+                        self.state = 'keypad'
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.state = 'menu'
+                    if event.key == pygame.K_F11:
+                        self.toggle_fullscreen()
+            self.screen.fill((30, 30, 80))
+            self.level_rects = []
+            y_start = 100
+            level = 1
+            for row in range(2):
+                x = margin_x
+                for col in range(5):
+                    rect = pygame.Rect(x, y_start + row * (tile_h + margin_y), tile_w, tile_h)
+                    unlocked = level <= self.data['unlocked_level'] or self.dev_mode
+                    color = (200, 200, 200) if unlocked else (100, 100, 100)
+                    pygame.draw.rect(self.screen, color, rect)
+                    text = self.font.render(str(level), True, (0,0,0))
+                    text_rect = text.get_rect(center=rect.center)
+                    self.screen.blit(text, text_rect)
+                    self.level_rects.append(rect)
+                    level += 1
+                    x += tile_w + margin_x
+            self.dev_rect = pygame.Rect(self.width-60, self.height-40, 50, 30)
+            pygame.draw.rect(self.screen, (80,80,80), self.dev_rect)
+            dev_surf = self.font.render('Dev', True, (0,0,0))
+            self.screen.blit(dev_surf, dev_surf.get_rect(center=self.dev_rect.center))
+            pygame.display.flip()
+            self.clock.tick(60)
 
     # -------- Gameplay ---------
     def start_new_game(self):
@@ -313,4 +384,52 @@ class MemoryMatchGame:
             self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
         else:
             self.screen = pygame.display.set_mode((self.width, self.height))
+
+    def keypad_loop(self):
+        buttons = []
+        padding = 10
+        btn_w = 60
+        btn_h = 40
+        start_x = self.width//2 - (btn_w*3 + padding*2)//2
+        start_y = self.height//2 - (btn_h*4 + padding*3)//2
+        labels = ['1','2','3','4','5','6','7','8','9','0','Submit','Cancel']
+        while self.state == 'keypad':
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state = 'quit'
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mx,my = event.pos
+                    for i, rect in enumerate(buttons):
+                        if rect.collidepoint(mx,my):
+                            label = labels[i]
+                            if label.isdigit():
+                                self.keypad_input += label
+                            elif label == 'Submit':
+                                if self.keypad_input == '12345':
+                                    self.dev_mode = True
+                                    self.data['unlocked_level'] = len(LEVELS)
+                                self.state = self.prev_state
+                            elif label == 'Cancel':
+                                self.state = self.prev_state
+                            break
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.state = self.prev_state
+            self.screen.fill((0,0,0))
+            buttons = []
+            idx = 0
+            for row in range(4):
+                for col in range(3):
+                    x = start_x + col*(btn_w+padding)
+                    y = start_y + row*(btn_h+padding)
+                    rect = pygame.Rect(x,y,btn_w,btn_h)
+                    buttons.append(rect)
+                    pygame.draw.rect(self.screen, (150,150,150), rect)
+                    label = labels[idx]
+                    text = self.font.render(label, True, (0,0,0))
+                    self.screen.blit(text, text.get_rect(center=rect.center))
+                    idx += 1
+            input_surf = self.font.render(self.keypad_input, True, (255,255,255))
+            self.screen.blit(input_surf, (start_x, start_y - 40))
+            pygame.display.flip()
+            self.clock.tick(60)
 
