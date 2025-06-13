@@ -7,6 +7,7 @@ from typing import Tuple, List, Optional
 import math
 
 SAVE_FILE = 'save.json'
+MAX_RANKS = 10
 
 LEVELS = [
     {'grid': (2, 2), 'time': 60},
@@ -93,6 +94,7 @@ KEYPAD_BG = (0, 0, 0)
 BUTTON_COLOR = (80, 80, 80)
 CARD_BACK_COLOR = (200, 200, 200)
 CARD_FACE_COLOR = (50, 150, 50)
+HOVER_COLOR = (100, 100, 100)
 LOCKED_COLOR = (100, 100, 100)
 
 
@@ -109,8 +111,12 @@ def load_data() -> dict:
                     lvl = data['leaderboard'].setdefault(key, {})
                     if not isinstance(lvl.get('best_time'), list):
                         lvl['best_time'] = []
+                    else:
+                        lvl['best_time'] = lvl['best_time'][:MAX_RANKS]
                     if not isinstance(lvl.get('least_moves'), list):
                         lvl['least_moves'] = []
+                    else:
+                        lvl['least_moves'] = lvl['least_moves'][:MAX_RANKS]
                 if not isinstance(data.get('current_level'), int):
                     data['current_level'] = 1
                 settings = data.setdefault('settings', {})
@@ -204,23 +210,29 @@ class MemoryMatchGame:
 
     def draw_menu_button(self):
         self.menu_rect = pygame.Rect(10, 10, 80, 30)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, self.menu_rect)
-        pygame.draw.rect(self.screen, (200, 200, 200), self.menu_rect, 2)
+        pygame.draw.rect(
+            self.screen, BUTTON_COLOR, self.menu_rect, border_radius=6)
+        pygame.draw.rect(
+            self.screen, (200, 200, 200), self.menu_rect, 2, border_radius=6)
         txt = self.font.render('Menu', True, self.word_color)
         self.screen.blit(txt, txt.get_rect(center=self.menu_rect.center))
 
     def draw_dev_button(self):
         label = 'Normal' if self.dev_mode else 'Dev'
         self.dev_rect = pygame.Rect(self.width - 100, self.height - 40, 90, 30)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, self.dev_rect)
-        pygame.draw.rect(self.screen, (200, 200, 200), self.dev_rect, 2)
+        pygame.draw.rect(
+            self.screen, BUTTON_COLOR, self.dev_rect, border_radius=6)
+        pygame.draw.rect(
+            self.screen, (200, 200, 200), self.dev_rect, 2, border_radius=6)
         txt = self.font.render(label, True, (0, 0, 0))
         self.screen.blit(txt, txt.get_rect(center=self.dev_rect.center))
 
     def draw_back_button(self):
         self.back_rect = pygame.Rect(100, 10, 80, 30)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, self.back_rect)
-        pygame.draw.rect(self.screen, (200, 200, 200), self.back_rect, 2)
+        pygame.draw.rect(
+            self.screen, BUTTON_COLOR, self.back_rect, border_radius=6)
+        pygame.draw.rect(
+            self.screen, (200, 200, 200), self.back_rect, 2, border_radius=6)
         txt = self.font.render('Back', True, self.word_color)
         self.screen.blit(txt, txt.get_rect(center=self.back_rect.center))
 
@@ -346,9 +358,13 @@ class MemoryMatchGame:
         color = color or self.word_color
         surface = self.font.render(text, True, color)
         rect = surface.get_rect(center=(self.width // 2, y))
-        button_rect = rect.inflate(20, 10)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, button_rect)
-        pygame.draw.rect(self.screen, (200, 200, 200), button_rect, 2)
+        button_rect = rect.inflate(40, 20)
+        mouse_over = button_rect.collidepoint(pygame.mouse.get_pos())
+        fill = HOVER_COLOR if mouse_over else BUTTON_COLOR
+        pygame.draw.rect(
+            self.screen, fill, button_rect, border_radius=8)
+        pygame.draw.rect(
+            self.screen, (200, 200, 200), button_rect, 2, border_radius=8)
         self.screen.blit(surface, rect)
         return button_rect
 
@@ -397,15 +413,17 @@ class MemoryMatchGame:
             for row in range(2):
                 x = margin_x
                 for col in range(5):
-                    rect = pygame.Rect(x, y_start + row *
-                                       (tile_h + margin_y), tile_w, tile_h)
+                    rect = pygame.Rect(
+                        x, y_start + row * (tile_h + margin_y), tile_w, tile_h)
                     unlocked = (
                         level <= self.data['unlocked_level']
                         or self.dev_mode
                     )
                     color = CARD_BACK_COLOR if unlocked else LOCKED_COLOR
-                    pygame.draw.rect(self.screen, color, rect)
-                    pygame.draw.rect(self.screen, (200, 200, 200), rect, 2)
+                    pygame.draw.rect(
+                        self.screen, color, rect, border_radius=8)
+                    pygame.draw.rect(
+                        self.screen, (200, 200, 200), rect, 2, border_radius=8)
                     text = self.font.render(str(level), True, (0, 0, 0))
                     text_rect = text.get_rect(center=rect.center)
                     self.screen.blit(text, text_rect)
@@ -456,11 +474,13 @@ class MemoryMatchGame:
             for row in range(2):
                 x = margin_x
                 for col in range(5):
-                    rect = pygame.Rect(x, y_start + row *
-                                       (tile_h + margin_y), tile_w, tile_h)
+                    rect = pygame.Rect(
+                        x, y_start + row * (tile_h + margin_y), tile_w, tile_h)
                     color = (180, 180, 180)
-                    pygame.draw.rect(self.screen, color, rect)
-                    pygame.draw.rect(self.screen, (200, 200, 200), rect, 2)
+                    pygame.draw.rect(
+                        self.screen, color, rect, border_radius=8)
+                    pygame.draw.rect(
+                        self.screen, (200, 200, 200), rect, 2, border_radius=8)
                     text = self.font.render(str(level), True, (0, 0, 0))
                     text_rect = text.get_rect(center=rect.center)
                     self.screen.blit(text, text_rect)
@@ -609,8 +629,10 @@ class MemoryMatchGame:
                         color = CARD_FACE_COLOR
                 else:
                     color = CARD_FACE_COLOR
-            pygame.draw.rect(self.screen, color, card.rect)
-            pygame.draw.rect(self.screen, (255, 255, 255), card.rect, 2)
+            pygame.draw.rect(
+                self.screen, color, card.rect, border_radius=6)
+            pygame.draw.rect(
+                self.screen, (255, 255, 255), card.rect, 2, border_radius=6)
             if face_shown and theme_key != 'Colors':
                 val_surf = self.font.render(card.value, True, (0, 0, 0))
                 val_rect = val_surf.get_rect(center=card.rect.center)
@@ -640,7 +662,7 @@ class MemoryMatchGame:
         for i, (_, val) in enumerate(table):
             if value < val:
                 return i
-        if len(table) < 20:
+        if len(table) < MAX_RANKS:
             return len(table)
         return None
 
@@ -715,13 +737,15 @@ class MemoryMatchGame:
                                 board['best_time'].insert(
                                     self.new_time_rank, [
                                         self.name_input, self.new_time_val])
-                                board['best_time'] = board['best_time'][:20]
+                                board['best_time'] = (
+                                    board['best_time'][:MAX_RANKS]
+                                )
                             if self.new_moves_rank is not None:
                                 board['least_moves'].insert(
                                     self.new_moves_rank, [
                                         self.name_input, self.new_moves_val])
                                 board['least_moves'] = (
-                                    board['least_moves'][:20]
+                                    board['least_moves'][:MAX_RANKS]
                                 )
                             save_data(self.data)
                             entering_name = False
@@ -834,7 +858,7 @@ class MemoryMatchGame:
                         4,
                         100)))
             y = 130
-            max_len = max(len(times), len(moves))
+            max_len = min(max(len(times), len(moves)), MAX_RANKS)
             for i in range(max_len):
                 if i < len(times):
                     name, val = times[i]
