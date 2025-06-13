@@ -42,6 +42,7 @@ DEFAULT_DATA = {
         'word_color': 'White',
         'timer_enabled': True,
         'fullscreen': False,
+        'bg_style': 'Stars',
     },
 }
 
@@ -56,6 +57,8 @@ BACKGROUND_OPTIONS = {
     'Purple': (60, 0, 60),
     'Black': (0, 0, 0),
 }
+
+BACKGROUND_STYLES = ['Stars', 'Grid']
 
 WORD_OPTIONS = {
     'White': (255, 255, 255),
@@ -191,35 +194,52 @@ class MemoryMatchGame:
         self.init_background()
 
     def init_background(self):
-        self.stars = [
-            Star(
-                random.randint(0, self.width),
-                random.randint(0, self.height),
-                random.uniform(30, 90),
-                random.randint(1, 3),
-            )
-            for _ in range(60)
-        ]
+        if getattr(self, 'bg_style', 'Stars') == 'Stars':
+            self.stars = [
+                Star(
+                    random.randint(0, self.width),
+                    random.randint(0, self.height),
+                    random.uniform(30, 90),
+                    random.randint(1, 3),
+                )
+                for _ in range(60)
+            ]
+        else:
+            self.stars = []
 
     def update_background(self, dt: int):
-        for star in self.stars:
-            star.y += star.speed * dt / 1000
-            if star.y > self.height:
-                star.y = 0
-                star.x = random.randint(0, self.width)
+        if self.bg_style == 'Stars':
+            for star in self.stars:
+                star.y += star.speed * dt / 1000
+                if star.y > self.height:
+                    star.y = 0
+                    star.x = random.randint(0, self.width)
 
     def draw_background(self):
-        self.screen.fill((0, 0, 0))
-        for star in self.stars:
-            pygame.draw.rect(
-                self.screen,
-                (255, 255, 255),
-                pygame.Rect(star.x, int(star.y), star.size, star.size),
-            )
-        overlay = pygame.Surface((self.width, self.height))
-        overlay.set_alpha(80)
-        overlay.fill(self.bg_color)
-        self.screen.blit(overlay, (0, 0))
+        if self.bg_style == 'Stars':
+            self.screen.fill((0, 0, 0))
+            for star in self.stars:
+                pygame.draw.rect(
+                    self.screen,
+                    (255, 255, 255),
+                    pygame.Rect(star.x, int(star.y), star.size, star.size),
+                )
+            overlay = pygame.Surface((self.width, self.height))
+            overlay.set_alpha(80)
+            overlay.fill(self.bg_color)
+            self.screen.blit(overlay, (0, 0))
+        else:  # Grid
+            self.screen.fill(self.bg_color)
+            grid_size = 40
+            line_color = (80, 80, 80)
+            for x in range(0, self.width, grid_size):
+                pygame.draw.line(
+                    self.screen, line_color, (x, 0), (x, self.height)
+                )
+            for y in range(0, self.height, grid_size):
+                pygame.draw.line(
+                    self.screen, line_color, (0, y), (self.width, y)
+                )
 
     def run(self):
         while True:
@@ -345,6 +365,7 @@ class MemoryMatchGame:
         bg_opts = list(BACKGROUND_OPTIONS.keys())
         word_opts = list(WORD_OPTIONS.keys())
         theme_opts = list(CARD_THEMES.keys())
+        style_opts = BACKGROUND_STYLES
         bg_val = self.data['settings'].get('background', 'Blue')
         if bg_val not in bg_opts:
             bg_val = 'Blue'
@@ -362,6 +383,12 @@ class MemoryMatchGame:
             theme_val = 'Numbers'
             self.data['settings']['theme'] = theme_val
         theme_idx = theme_opts.index(theme_val)
+
+        style_val = self.data['settings'].get('bg_style', 'Stars')
+        if style_val not in style_opts:
+            style_val = 'Stars'
+            self.data['settings']['bg_style'] = style_val
+        style_idx = style_opts.index(style_val)
         while self.state == 'settings':
             dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
@@ -389,6 +416,12 @@ class MemoryMatchGame:
                             theme_opts[theme_idx]
                         )
                         self.update_colors()
+                    elif self.style_rect.collidepoint(mx, my):
+                        style_idx = (style_idx + 1) % len(style_opts)
+                        self.data['settings']['bg_style'] = (
+                            style_opts[style_idx]
+                        )
+                        self.update_colors()
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
                     self.toggle_fullscreen()
             self.update_background(dt)
@@ -400,6 +433,8 @@ class MemoryMatchGame:
                 f'Word Color: {word_opts[word_idx]}', 250)
             self.theme_rect = self.draw_button(
                 f'Theme: {theme_opts[theme_idx]}', 300)
+            self.style_rect = self.draw_button(
+                f'Background Style: {style_opts[style_idx]}', 350)
             self.draw_menu_button()
             pygame.display.flip()
             self.clock.tick(60)
@@ -854,12 +889,17 @@ class MemoryMatchGame:
         if bg_key not in BACKGROUND_OPTIONS:
             bg_key = 'Blue'
             self.data['settings']['background'] = bg_key
+        style_key = self.data['settings'].get('bg_style', 'Stars')
+        if style_key not in BACKGROUND_STYLES:
+            style_key = 'Stars'
+            self.data['settings']['bg_style'] = style_key
         word_key = self.data['settings'].get('word_color', 'White')
         if word_key not in WORD_OPTIONS:
             word_key = 'White'
             self.data['settings']['word_color'] = word_key
         self.bg_color = BACKGROUND_OPTIONS.get(bg_key, MENU_BG)
         self.word_color = WORD_OPTIONS.get(word_key, (255, 255, 255))
+        self.bg_style = style_key
 
         theme_key = self.data['settings'].get('theme', 'Numbers')
         if theme_key not in CARD_THEMES:
