@@ -56,15 +56,17 @@ BACKGROUND_OPTIONS = {
     'Green': (0, 70, 0),
     'Purple': (60, 0, 60),
     'Black': (0, 0, 0),
+    'Orange': (90, 40, 0),
 }
 
-BACKGROUND_STYLES = ['Stars', 'Grid']
+BACKGROUND_STYLES = ['Stars', 'Grid', 'Dots', 'Stripes', 'Solid']
 
 WORD_OPTIONS = {
     'White': (255, 255, 255),
     'Yellow': (255, 255, 0),
     'Red': (255, 0, 0),
     'Black': (0, 0, 0),
+    'Blue': (0, 0, 255),
 }
 
 CARD_THEMES = {
@@ -85,6 +87,12 @@ CARD_THEMES = {
         'Horse', 'Zebra', 'Koala', 'Panda', 'Monkey', 'Mouse', 'Rabbit',
         'Sheep', 'Snake', 'Bee', 'Ant', 'Crab', 'Whale', 'Shark',
         'Dolphin', 'Llama', 'Camel'
+    ],
+    'Emojis': [
+        '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
+        '😉', '😊', '😋', '😎', '😍', '😘', '😗', '😙',
+        '😚', '🙂', '🤗', '🤔', '😐', '😑', '😶', '🙄',
+        '😏', '😣', '😥', '😮', '🤐', '😯', '😪', '😫'
     ],
 }
 
@@ -214,6 +222,8 @@ class MemoryMatchGame:
                 if star.y > self.height:
                     star.y = 0
                     star.x = random.randint(0, self.width)
+        else:
+            pass
 
     def draw_background(self):
         if self.bg_style == 'Stars':
@@ -228,7 +238,7 @@ class MemoryMatchGame:
             overlay.set_alpha(80)
             overlay.fill(self.bg_color)
             self.screen.blit(overlay, (0, 0))
-        else:  # Grid
+        elif self.bg_style == 'Grid':
             self.screen.fill(self.bg_color)
             grid_size = 40
             line_color = (80, 80, 80)
@@ -240,6 +250,23 @@ class MemoryMatchGame:
                 pygame.draw.line(
                     self.screen, line_color, (0, y), (self.width, y)
                 )
+        elif self.bg_style == 'Dots':
+            self.screen.fill(self.bg_color)
+            dot_color = (80, 80, 80)
+            spacing = 40
+            for x in range(0, self.width, spacing):
+                for y in range(0, self.height, spacing):
+                    pygame.draw.circle(self.screen, dot_color, (x, y), 2)
+        elif self.bg_style == 'Stripes':
+            self.screen.fill(self.bg_color)
+            stripe_color = (80, 80, 80)
+            spacing = 40
+            for y in range(0, self.height, spacing):
+                pygame.draw.rect(
+                    self.screen, stripe_color, (0, y, self.width, 20)
+                )
+        else:  # Solid
+            self.screen.fill(self.bg_color)
 
     def run(self):
         while True:

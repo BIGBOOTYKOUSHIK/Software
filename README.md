@@ -35,15 +35,17 @@ smoothly for a polished look. Buttons are drawn inside bordered boxes for a
 cleaner appearance with rounded corners and hover highlighting. Each card
 includes a white border so it stands out against any background.
 
-All screens can display either a subtle animated star field or a simple grid
-pattern. The background is tinted with whichever color you choose in
-**Settings**, giving the game a lively but still readable atmosphere.
+All screens can display a subtle animated star field, a grid, dotted pattern,
+striped lines, or just a solid color. The background is tinted with whichever
+color you choose in **Settings**, giving the game a lively but still readable
+atmosphere.
 
 ## Settings
 Choose **Settings** from the main menu to customize the game's appearance.
-You can cycle through several background colors, text colors, and background
-effects (either **Stars** or **Grid**). The card theme can be changed between
-**Numbers**, **Letters**, **Colors** and **Animals**. In the **Colors** theme,
+You can cycle through five background colors, five text colors and five
+background styles (**Stars**, **Grid**, **Dots**, **Stripes** or **Solid**).
+The card theme can be changed between **Numbers**, **Letters**, **Colors**,
+**Animals** and **Emojis**. In the **Colors** theme,
 matched cards display the actual color instead of text. If a saved theme is
 missing, the game falls back to **Numbers**. Your selections are stored in the
 save file so the game remembers them next time.
