@@ -145,10 +145,19 @@ class Card:
 
 
 @dataclass
+class Star:
+    x: int
+    y: int
+    speed: float
+    size: int
+
+
+@dataclass
 class MemoryMatchGame:
     width: int = 800
     height: int = 600
     data: dict = field(default_factory=load_data)
+    stars: List[Star] = field(default_factory=list)
 
     def __post_init__(self):
         pygame.init()
@@ -179,6 +188,38 @@ class MemoryMatchGame:
         self.message_timer = 0
         self.finished_level = 1
         self.update_colors()
+        self.init_background()
+
+    def init_background(self):
+        self.stars = [
+            Star(
+                random.randint(0, self.width),
+                random.randint(0, self.height),
+                random.uniform(30, 90),
+                random.randint(1, 3),
+            )
+            for _ in range(60)
+        ]
+
+    def update_background(self, dt: int):
+        for star in self.stars:
+            star.y += star.speed * dt / 1000
+            if star.y > self.height:
+                star.y = 0
+                star.x = random.randint(0, self.width)
+
+    def draw_background(self):
+        self.screen.fill((0, 0, 0))
+        for star in self.stars:
+            pygame.draw.rect(
+                self.screen,
+                (255, 255, 255),
+                pygame.Rect(star.x, int(star.y), star.size, star.size),
+            )
+        overlay = pygame.Surface((self.width, self.height))
+        overlay.set_alpha(80)
+        overlay.fill(self.bg_color)
+        self.screen.blit(overlay, (0, 0))
 
     def run(self):
         while True:
@@ -239,6 +280,7 @@ class MemoryMatchGame:
     # -------- Menu ---------
     def menu_loop(self):
         while self.state == 'menu':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -276,17 +318,24 @@ class MemoryMatchGame:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F11:
                         self.toggle_fullscreen()
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             self.draw_text_center('Memory Match', 100, self.large_font)
-            self.play_rect = self.draw_button('Play', 240)
-            self.levels_rect = self.draw_button('Levels', 280)
+            y = 220
+            self.play_rect = self.draw_button('Play', y)
+            y += 60
+            self.levels_rect = self.draw_button('Levels', y)
             can_continue = 'current_level' in self.data
             cont_text = 'Continue' if can_continue else 'Continue (locked)'
             text_color = (255, 255, 255) if can_continue else (150, 150, 150)
-            self.continue_rect = self.draw_button(cont_text, 320, text_color)
-            self.leader_rect = self.draw_button('Leaderboards', 360)
-            self.settings_rect = self.draw_button('Settings', 400)
-            self.exit_rect = self.draw_button('Exit', 440)
+            y += 60
+            self.continue_rect = self.draw_button(cont_text, y, text_color)
+            y += 60
+            self.leader_rect = self.draw_button('Leaderboards', y)
+            y += 60
+            self.settings_rect = self.draw_button('Settings', y)
+            y += 60
+            self.exit_rect = self.draw_button('Exit', y)
             self.draw_menu_button()
             self.draw_dev_button()
             pygame.display.flip()
@@ -314,6 +363,7 @@ class MemoryMatchGame:
             self.data['settings']['theme'] = theme_val
         theme_idx = theme_opts.index(theme_val)
         while self.state == 'settings':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -341,7 +391,8 @@ class MemoryMatchGame:
                         self.update_colors()
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
                     self.toggle_fullscreen()
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             self.draw_text_center('Settings', 80, self.large_font)
             self.bg_rect = self.draw_button(
                 f'Background: {bg_opts[bg_idx]}', 200)
@@ -374,6 +425,7 @@ class MemoryMatchGame:
         margin_x = (self.width - tile_w * 5) // 6
         margin_y = 40
         while self.state == 'levels':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -406,7 +458,8 @@ class MemoryMatchGame:
                         self.state = 'menu'
                     if event.key == pygame.K_F11:
                         self.toggle_fullscreen()
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             self.level_rects = []
             y_start = 100
             level = 1
@@ -441,6 +494,7 @@ class MemoryMatchGame:
         margin_x = (self.width - tile_w * 5) // 6
         margin_y = 40
         while self.state == 'leader_select':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -467,7 +521,8 @@ class MemoryMatchGame:
                         self.state = 'menu'
                     if event.key == pygame.K_F11:
                         self.toggle_fullscreen()
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             self.level_rects = []
             y_start = 100
             level = 1
@@ -550,6 +605,8 @@ class MemoryMatchGame:
                     if event.key == pygame.K_F11:
                         self.toggle_fullscreen()
             self.update_game(dt)
+            self.update_background(dt)
+            self.draw_background()
             self.draw_game()
             self.draw_menu_button()
             if self.check_complete():
@@ -614,7 +671,7 @@ class MemoryMatchGame:
         self.time_left = max(0, self.time_limit - int(elapsed))
 
     def draw_game(self):
-        self.screen.fill(self.bg_color)
+        # background already drawn
         theme_key = self.data['settings'].get('theme', 'Numbers')
         for card in self.cards:
             if not card.visible:
@@ -711,6 +768,7 @@ class MemoryMatchGame:
 
     def level_complete_loop(self):
         while self.state == 'level_complete':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             entering_name = self.ask_name
             for event in pygame.event.get():
@@ -767,7 +825,8 @@ class MemoryMatchGame:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.menu_rect.collidepoint(event.pos):
                         self.state = 'menu'
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             self.draw_text_center('Level Complete!', 180, self.large_font)
             if entering_name:
                 self.draw_text_center(
@@ -807,9 +866,11 @@ class MemoryMatchGame:
             theme_key = 'Numbers'
             self.data['settings']['theme'] = theme_key
         self.card_theme = CARD_THEMES[theme_key]
+        self.init_background()
 
     def leaderboard_loop(self):
         while self.state == 'leaderboard':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             self.back_rect = pygame.Rect(100, 10, 80, 30)
             for event in pygame.event.get():
@@ -825,7 +886,8 @@ class MemoryMatchGame:
                         self.state = 'menu'
                     elif self.back_rect.collidepoint(event.pos):
                         self.state = 'leader_select'
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             leaderboards = self.data.get('leaderboard', {})
             level_key = str(getattr(self, 'leader_level', 1))
             board = leaderboards.get(level_key, {})
@@ -890,6 +952,7 @@ class MemoryMatchGame:
         numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
         long_w = int(btn_w * 1.5)
         while self.state == 'keypad':
+            dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -918,7 +981,8 @@ class MemoryMatchGame:
                     and event.key == pygame.K_ESCAPE
                 ):
                     self.state = self.prev_state
-            self.screen.fill(self.bg_color)
+            self.update_background(dt)
+            self.draw_background()
             buttons = []
             idx = 0
             for row in range(3):
