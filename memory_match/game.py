@@ -75,11 +75,12 @@ CARD_THEMES = {
         list('ABCDEFGHIJKLMNOPQRSTUVWXYZ') + [f'{c}{c}' for c in 'ABCDEF']
     ),
     'Colors': [
-        'Red', 'Green', 'Blue', 'Yellow', 'Orange', 'Purple', 'Pink', 'Brown',
-        'Gray', 'Black', 'White', 'Cyan', 'Magenta', 'Lime', 'Maroon', 'Olive',
-        'Navy', 'Teal', 'Aqua', 'Lavender', 'Gold', 'Silver', 'Coral',
-        'Indigo', 'Ivory', 'Khaki', 'Mint', 'Moccasin', 'Orchid', 'Plum',
-        'Salmon', 'Turquoise'
+        'Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple', 'HotPink',
+        'Cyan', 'Magenta', 'Lime', 'Teal', 'Turquoise', 'Gold', 'Coral',
+        'Crimson', 'Fuchsia', 'Violet', 'Indigo', 'Azure', 'Chartreuse',
+        'Tomato', 'SpringGreen', 'DeepSkyBlue', 'MediumOrchid',
+        'DodgerBlue', 'MediumVioletRed', 'OrangeRed', 'SkyBlue',
+        'LawnGreen', 'MediumSeaGreen', 'FireBrick', 'DeepPink'
     ],
     'Animals': [
         'Cat', 'Dog', 'Cow', 'Pig', 'Fox', 'Bear', 'Lion', 'Tiger',

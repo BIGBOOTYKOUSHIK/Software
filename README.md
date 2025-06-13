@@ -46,6 +46,7 @@ You can cycle through five background colors, five text colors and five
 background styles (**Stars**, **Grid**, **Dots**, **Stripes** or **Solid**).
 The card theme can be changed between **Numbers**, **Letters**, **Colors**,
 **Animals** and **Emojis**. In the **Colors** theme,
-matched cards display the actual color instead of text. If a saved theme is
-missing, the game falls back to **Numbers**. Your selections are stored in the
-save file so the game remembers them next time.
+matched cards display the actual color instead of text using a palette of
+vibrant shades. If a saved theme is missing, the game falls back to
+**Numbers**. Your selections are stored in the save file so the game remembers
+them next time.
