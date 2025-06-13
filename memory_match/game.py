@@ -198,6 +198,10 @@ class MemoryMatchGame:
         self.message: str = ''
         self.message_timer = 0
         self.finished_level = 1
+        self.grid_offset = 0
+        self.dot_offset = 0
+        self.stripe_offset = 0
+        self.solid_phase = 0
         self.update_colors()
         self.init_background()
 
@@ -214,6 +218,10 @@ class MemoryMatchGame:
             ]
         else:
             self.stars = []
+        self.grid_offset = 0
+        self.dot_offset = 0
+        self.stripe_offset = 0
+        self.solid_phase = 0
 
     def update_background(self, dt: int):
         if self.bg_style == 'Stars':
@@ -222,8 +230,14 @@ class MemoryMatchGame:
                 if star.y > self.height:
                     star.y = 0
                     star.x = random.randint(0, self.width)
-        else:
-            pass
+        elif self.bg_style == 'Grid':
+            self.grid_offset = (self.grid_offset + dt * 0.02) % 40
+        elif self.bg_style == 'Dots':
+            self.dot_offset = (self.dot_offset + dt * 0.05) % 40
+        elif self.bg_style == 'Stripes':
+            self.stripe_offset = (self.stripe_offset + dt * 0.03) % 40
+        else:  # Solid
+            self.solid_phase = (self.solid_phase + dt * 0.002) % (math.tau)
 
     def draw_background(self):
         if self.bg_style == 'Stars':
@@ -242,11 +256,12 @@ class MemoryMatchGame:
             self.screen.fill(self.bg_color)
             grid_size = 40
             line_color = (80, 80, 80)
-            for x in range(0, self.width, grid_size):
+            offset = int(self.grid_offset)
+            for x in range(-grid_size + offset, self.width, grid_size):
                 pygame.draw.line(
                     self.screen, line_color, (x, 0), (x, self.height)
                 )
-            for y in range(0, self.height, grid_size):
+            for y in range(-grid_size + offset, self.height, grid_size):
                 pygame.draw.line(
                     self.screen, line_color, (0, y), (self.width, y)
                 )
@@ -254,19 +269,29 @@ class MemoryMatchGame:
             self.screen.fill(self.bg_color)
             dot_color = (80, 80, 80)
             spacing = 40
-            for x in range(0, self.width, spacing):
-                for y in range(0, self.height, spacing):
+            offset = int(self.dot_offset)
+            for x in range(-spacing + offset, self.width, spacing):
+                for y in range(-spacing + offset, self.height, spacing):
                     pygame.draw.circle(self.screen, dot_color, (x, y), 2)
         elif self.bg_style == 'Stripes':
             self.screen.fill(self.bg_color)
             stripe_color = (80, 80, 80)
             spacing = 40
-            for y in range(0, self.height, spacing):
+            offset = int(self.stripe_offset)
+            for y in range(-spacing + offset, self.height, spacing):
                 pygame.draw.rect(
                     self.screen, stripe_color, (0, y, self.width, 20)
                 )
         else:  # Solid
-            self.screen.fill(self.bg_color)
+            phase = (math.sin(self.solid_phase) + 1) / 2
+            r, g, b = self.bg_color
+            shade = int(20 * phase)
+            color = (
+                min(255, max(0, r + shade)),
+                min(255, max(0, g + shade)),
+                min(255, max(0, b + shade)),
+            )
+            self.screen.fill(color)
 
     def run(self):
         while True:

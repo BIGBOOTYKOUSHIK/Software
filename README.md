@@ -35,10 +35,10 @@ smoothly for a polished look. Buttons are drawn inside bordered boxes for a
 cleaner appearance with rounded corners and hover highlighting. Each card
 includes a white border so it stands out against any background.
 
-All screens can display a subtle animated star field, a grid, dotted pattern,
-striped lines, or just a solid color. The background is tinted with whichever
-color you choose in **Settings**, giving the game a lively but still readable
-atmosphere.
+All screens feature animated backgrounds: a drifting star field, scrolling
+grid, floating dots, moving stripes, or a pulsing solid color. The background
+is tinted with whichever color you choose in **Settings**, giving the game a
+lively but still readable atmosphere.
 
 ## Settings
 Choose **Settings** from the main menu to customize the game's appearance.
