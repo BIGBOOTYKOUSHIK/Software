@@ -595,19 +595,27 @@ class MemoryMatchGame:
 
     def draw_game(self):
         self.screen.fill(self.bg_color)
+        theme_key = self.data['settings'].get('theme', 'Numbers')
         for card in self.cards:
             if not card.visible:
                 continue
             color = CARD_BACK_COLOR
-            if card.is_face_up or card.is_matched:
-                color = CARD_FACE_COLOR
+            face_shown = card.is_face_up or card.is_matched
+            if face_shown:
+                if theme_key == 'Colors':
+                    try:
+                        color = pygame.Color(card.value.lower())
+                    except ValueError:
+                        color = CARD_FACE_COLOR
+                else:
+                    color = CARD_FACE_COLOR
             pygame.draw.rect(self.screen, color, card.rect)
             pygame.draw.rect(self.screen, (255, 255, 255), card.rect, 2)
-            if card.is_face_up or card.is_matched:
+            if face_shown and theme_key != 'Colors':
                 val_surf = self.font.render(card.value, True, (0, 0, 0))
                 val_rect = val_surf.get_rect(center=card.rect.center)
                 self.screen.blit(val_surf, val_rect)
-            elif self.dev_mode:
+            elif not face_shown and self.dev_mode:
                 val_surf = self.font.render(card.value, True, LOCKED_COLOR)
                 val_surf.set_alpha(80)
                 val_rect = val_surf.get_rect(center=card.rect.center)
