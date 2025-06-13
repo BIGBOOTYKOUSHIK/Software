@@ -1,14 +1,27 @@
-import pygame
-import json
-import os
-import random
-from dataclasses import dataclass, field
-from typing import Tuple, List, Optional
-import math
+"""Main game module for Memory Match.
 
+This file contains all game logic, rendering code and data handling. The goal
+is to keep the code readable for new developers, so the following sections are
+annotated extensively with inline comments.
+"""
+
+import pygame  # graphics and input library
+import json  # used for saving and loading progress
+import os  # file path utilities
+import random  # shuffling and random placement
+from dataclasses import dataclass, field  # convenient data containers
+from typing import Tuple, List, Optional  # type hints
+import math  # math helper functions
+
+# Name of the JSON file used for storing persistent data
 SAVE_FILE = 'save.json'
+
+# Number of scores to keep in each leaderboard table
 MAX_RANKS = 10
 
+# Configuration for each of the ten levels. The ``grid`` value defines the
+# board size as ``(rows, columns)`` while ``time`` sets the starting timer in
+# seconds.
 LEVELS = [
     {'grid': (2, 2), 'time': 60},
     {'grid': (2, 4), 'time': 75},
@@ -22,9 +35,13 @@ LEVELS = [
     {'grid': (8, 8), 'time': 180},
 ]
 
+# Starting leaderboard data so the tables are never empty on a new install
 PLACEHOLDER_TIMES = [['AAA', 30], ['BBB', 35], ['CCC', 40]]
 PLACEHOLDER_MOVES = [['AAA', 4], ['BBB', 5], ['CCC', 6]]
 
+# Default structure for a brand new save file. It tracks which level is
+# unlocked, the current level in progress and an empty leaderboard for each
+# stage. The settings block stores all visual and sound preferences.
 DEFAULT_DATA = {
     'unlocked_level': 1,
     'current_level': 1,
@@ -46,11 +63,13 @@ DEFAULT_DATA = {
     },
 }
 
+# Short congratulatory messages displayed when a pair is found
 CELEBRATIONS = [
     'Great!', 'Nice!', 'Well done!', 'Awesome!', 'Good job!'
 ]
 
 # configuration options
+# Colors the player can choose from for the background tint
 BACKGROUND_OPTIONS = {
     'Blue': (30, 30, 90),
     'Green': (0, 70, 0),
@@ -59,8 +78,10 @@ BACKGROUND_OPTIONS = {
     'Orange': (90, 40, 0),
 }
 
+# Available animated background patterns
 BACKGROUND_STYLES = ['Stars', 'Grid', 'Dots', 'Stripes', 'Solid']
 
+# Text colors used throughout the UI
 WORD_OPTIONS = {
     'White': (255, 255, 255),
     'Yellow': (255, 255, 0),
@@ -69,6 +90,7 @@ WORD_OPTIONS = {
     'Blue': (0, 0, 255),
 }
 
+# Different sets of card faces that players can choose between
 CARD_THEMES = {
     'Numbers': [str(i) for i in range(1, 33)],
     'Letters': (
@@ -99,18 +121,25 @@ CARD_THEMES = {
 
 MENU_BG = (30, 30, 90)
 LEVEL_BG = (30, 30, 80)
-GAME_BG = (0, 0, 0)
-COMPLETE_BG = (0, 100, 0)
-LEADER_BG = (40, 40, 60)
-KEYPAD_BG = (0, 0, 0)
-BUTTON_COLOR = (80, 80, 80)
-CARD_BACK_COLOR = (200, 200, 200)
-CARD_FACE_COLOR = (50, 150, 50)
-HOVER_COLOR = (100, 100, 100)
-LOCKED_COLOR = (100, 100, 100)
+# Commonly used UI colors
+GAME_BG = (0, 0, 0)          # plain black background for gameplay
+COMPLETE_BG = (0, 100, 0)    # green backdrop on level completion
+LEADER_BG = (40, 40, 60)     # darker background for leaderboards
+KEYPAD_BG = (0, 0, 0)        # keypad overlay color
+BUTTON_COLOR = (80, 80, 80)  # default button fill
+CARD_BACK_COLOR = (200, 200, 200)  # color of hidden cards
+CARD_FACE_COLOR = (50, 150, 50)    # default face color when not using 'Colors'
+HOVER_COLOR = (100, 100, 100)      # button hover state
+LOCKED_COLOR = (100, 100, 100)     # color for locked level tiles
 
 
 def load_data() -> dict:
+    """Load the persistent save file.
+
+    If the file exists we try to parse JSON and validate the structure so the
+    rest of the game code can assume sane values. When anything goes wrong we
+    fall back to ``DEFAULT_DATA``.
+    """
     if os.path.exists(SAVE_FILE):
         try:
             with open(SAVE_FILE, 'r') as f:
@@ -138,26 +167,32 @@ def load_data() -> dict:
                 return data
         except Exception:
             pass
+    # Return a deep copy of the defaults so callers can modify the dict safely
     return json.loads(json.dumps(DEFAULT_DATA))
 
 
 def save_data(data: dict):
+    """Write the in-memory save data back to disk."""
     with open(SAVE_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
 
 @dataclass
 class Card:
-    value: str
-    rect: pygame.Rect
-    is_face_up: bool = False
-    is_matched: bool = False
-    target: Optional[Tuple[int, int]] = None
-    visible: bool = True
+    """Representation of a single card on the board."""
+
+    value: str  # what is shown when the card is flipped
+    rect: pygame.Rect  # position and size on screen
+    is_face_up: bool = False  # whether the card is currently revealed
+    is_matched: bool = False  # has this card been successfully paired?
+    target: Optional[Tuple[int, int]] = None  # animation target location
+    visible: bool = True  # used when sliding matched cards off screen
 
 
 @dataclass
 class Star:
+    """Simple particle used for the star field background."""
+
     x: int
     y: int
     speed: float
@@ -166,26 +201,34 @@ class Star:
 
 @dataclass
 class MemoryMatchGame:
-    width: int = 800
-    height: int = 600
-    data: dict = field(default_factory=load_data)
-    stars: List[Star] = field(default_factory=list)
+    """Main game class holding all state and behavior."""
+
+    width: int = 800  # screen width
+    height: int = 600  # screen height
+    data: dict = field(default_factory=load_data)  # persistent game data
+    stars: List[Star] = field(default_factory=list)  # star particles for BG
 
     def __post_init__(self):
+        """Initialize pygame and set up the main state variables."""
+
         pygame.init()
+        # Create the display surface, respecting the saved fullscreen setting
         flags = pygame.FULLSCREEN if self.data['settings'].get(
             'fullscreen') else 0
         self.screen = pygame.display.set_mode((self.width, self.height), flags)
         pygame.display.set_caption('Memory Match')
         self.clock = pygame.time.Clock()
+        # Fonts used for most text and large headings
         self.font = pygame.font.SysFont(None, 36)
         self.large_font = pygame.font.SysFont(None, 72)
+        # Game state values
         self.state = 'menu'
         self.current_level = 1
         self.dev_mode = False
         self.saved_unlocked = self.data.get('unlocked_level', 1)
         self.keypad_input = ''
         self.prev_state = None
+        # Gameplay related variables
         self.cards: List[Card] = []
         self.first_card: Optional[Card] = None
         self.second_card: Optional[Card] = None
@@ -196,9 +239,11 @@ class MemoryMatchGame:
         self.flip_start: Optional[int] = None
         self.card_w = 0
         self.card_h = 0
+        # Message shown when a pair is matched
         self.message: str = ''
         self.message_timer = 0
         self.finished_level = 1
+        # Offsets for animated backgrounds
         self.grid_offset = 0
         self.dot_offset = 0
         self.stripe_offset = 0
@@ -207,6 +252,8 @@ class MemoryMatchGame:
         self.init_background()
 
     def init_background(self):
+        """Create particles and reset animation offsets for the background."""
+
         if getattr(self, 'bg_style', 'Stars') == 'Stars':
             self.stars = [
                 Star(
@@ -225,6 +272,8 @@ class MemoryMatchGame:
         self.solid_phase = 0
 
     def update_background(self, dt: int):
+        """Animate whichever background style is currently active."""
+
         if self.bg_style == 'Stars':
             for star in self.stars:
                 star.y += star.speed * dt / 1000
@@ -241,6 +290,8 @@ class MemoryMatchGame:
             self.solid_phase = (self.solid_phase + dt * 0.002) % (math.tau)
 
     def draw_background(self):
+        """Render the animated background behind everything else."""
+
         if self.bg_style == 'Stars':
             self.screen.fill((0, 0, 0))
             for star in self.stars:
@@ -295,6 +346,8 @@ class MemoryMatchGame:
             self.screen.fill(color)
 
     def run(self):
+        """Main game loop router."""
+
         while True:
             if self.state == 'menu':
                 self.menu_loop()
@@ -317,6 +370,8 @@ class MemoryMatchGame:
         pygame.quit()
 
     def draw_text_center(self, text: str, y: int, font=None):
+        """Helper to render centered text."""
+
         font = font or self.font
         surface = font.render(text, True, self.word_color)
         rect = surface.get_rect(center=(self.width // 2, y))
@@ -324,11 +379,14 @@ class MemoryMatchGame:
 
     def draw_text(self, text: str, x: int, y: int, font=None):
         """Draw text at a specific screen position."""
+
         font = font or self.font
         surface = font.render(text, True, self.word_color)
         self.screen.blit(surface, (x, y))
 
     def draw_menu_button(self):
+        """Draw the universal Menu button in the top-left."""
+
         self.menu_rect = pygame.Rect(10, 10, 80, 30)
         pygame.draw.rect(
             self.screen, BUTTON_COLOR, self.menu_rect, border_radius=6)
@@ -338,6 +396,8 @@ class MemoryMatchGame:
         self.screen.blit(txt, txt.get_rect(center=self.menu_rect.center))
 
     def draw_dev_button(self):
+        """Draw the Dev/Normal toggle in the bottom-right."""
+
         label = 'Normal' if self.dev_mode else 'Dev'
         self.dev_rect = pygame.Rect(self.width - 100, self.height - 40, 90, 30)
         pygame.draw.rect(
@@ -348,6 +408,8 @@ class MemoryMatchGame:
         self.screen.blit(txt, txt.get_rect(center=self.dev_rect.center))
 
     def draw_back_button(self):
+        """Draw a Back button used on secondary screens."""
+
         self.back_rect = pygame.Rect(100, 10, 80, 30)
         pygame.draw.rect(
             self.screen, BUTTON_COLOR, self.back_rect, border_radius=6)
@@ -358,6 +420,8 @@ class MemoryMatchGame:
 
     # -------- Menu ---------
     def menu_loop(self):
+        """Handle the main menu screen."""
+
         while self.state == 'menu':
             dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
@@ -421,6 +485,8 @@ class MemoryMatchGame:
             self.clock.tick(60)
 
     def settings_loop(self):
+        """Allow the player to cycle through visual preference options."""
+
         bg_opts = list(BACKGROUND_OPTIONS.keys())
         word_opts = list(WORD_OPTIONS.keys())
         theme_opts = list(CARD_THEMES.keys())
@@ -500,6 +566,8 @@ class MemoryMatchGame:
 
     def draw_button(self, text: str, y: int,
                     color=None) -> pygame.Rect:
+        """Draw a clickable button and return its rectangle."""
+
         color = color or self.word_color
         surface = self.font.render(text, True, color)
         rect = surface.get_rect(center=(self.width // 2, y))
@@ -514,6 +582,8 @@ class MemoryMatchGame:
         return button_rect
 
     def levels_loop(self):
+        """Show available levels and handle unlocking/dev mode."""
+
         tile_w = 100
         tile_h = 60
         margin_x = (self.width - tile_w * 5) // 6
@@ -583,6 +653,8 @@ class MemoryMatchGame:
             self.clock.tick(60)
 
     def leader_select_loop(self):
+        """Allow the user to pick which level's leaderboard to view."""
+
         tile_w = 100
         tile_h = 60
         margin_x = (self.width - tile_w * 5) // 6
@@ -644,12 +716,16 @@ class MemoryMatchGame:
 
     # -------- Gameplay ---------
     def start_new_game(self):
+        """Reset progress and begin at level 1."""
+
         self.current_level = 1
         self.data['current_level'] = 1
         save_data(self.data)
         self.start_level(self.current_level)
 
     def start_level(self, level: int):
+        """Setup all game objects for the chosen level."""
+
         config = LEVELS[level - 1]
         cols, rows = config['grid'][1], config['grid'][0]
         num_pairs = cols * rows // 2
@@ -664,6 +740,7 @@ class MemoryMatchGame:
         self.card_w = card_w - 10
         self.card_h = card_h - 10
         self.cards = []
+        # Create card objects positioned in the grid
         for r in range(rows):
             for c in range(cols):
                 x = c * card_w + 5
@@ -682,6 +759,8 @@ class MemoryMatchGame:
             save_data(self.data)
 
     def play_loop(self):
+        """Main gameplay loop for a level."""
+
         while self.state == 'play':
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
             dt = self.clock.tick(60)
@@ -710,6 +789,8 @@ class MemoryMatchGame:
             pygame.display.flip()
 
     def handle_click(self, pos: Tuple[int, int]):
+        """Flip cards based on a mouse click."""
+
         if self.flip_start or self.message_timer > 0:
             return
         for card in self.cards:
@@ -725,6 +806,8 @@ class MemoryMatchGame:
                 break
 
     def update_game(self, dt: int):
+        """Advance animations and check for completed pairs."""
+
         self.update_timer()
         now = pygame.time.get_ticks()
         if self.first_card and self.second_card and self.flip_start:
@@ -761,10 +844,14 @@ class MemoryMatchGame:
                     card.rect.centery += int(speed * dy / dist)
 
     def update_timer(self):
+        """Recalculate how much time the player has left."""
+
         elapsed = (pygame.time.get_ticks() - self.start_ticks) / 1000
         self.time_left = max(0, self.time_limit - int(elapsed))
 
     def draw_game(self):
+        """Render all cards and HUD elements."""
+
         # background already drawn
         theme_key = self.data['settings'].get('theme', 'Numbers')
         for card in self.cards:
@@ -817,9 +904,13 @@ class MemoryMatchGame:
             self.screen.blit(msg_surf, msg_rect)
 
     def check_complete(self) -> bool:
+        """Return ``True`` when all cards have been matched."""
+
         return all(card.is_matched for card in self.cards)
 
     def get_rank(self, table: List[List], value: int) -> Optional[int]:
+        """Return leaderboard insertion index for ``value`` or ``None``."""
+
         for i, (_, val) in enumerate(table):
             if value < val:
                 return i
@@ -828,6 +919,8 @@ class MemoryMatchGame:
         return None
 
     def finish_level(self):
+        """Handle end-of-level logic and leaderboard checks."""
+
         time_taken = self.time_limit - self.time_left
         leaderboards = self.data.setdefault('leaderboard', {})
         self.finished_level = self.current_level
@@ -871,6 +964,8 @@ class MemoryMatchGame:
             self.state = 'menu'
 
     def level_complete_loop(self):
+        """Display completion info and handle leaderboard entry."""
+
         while self.state == 'level_complete':
             dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
@@ -944,6 +1039,8 @@ class MemoryMatchGame:
             self.clock.tick(60)
 
     def toggle_fullscreen(self):
+        """Switch between fullscreen and windowed mode."""
+
         fullscreen = not self.data['settings'].get('fullscreen')
         self.data['settings']['fullscreen'] = fullscreen
         save_data(self.data)
@@ -954,6 +1051,8 @@ class MemoryMatchGame:
             self.screen = pygame.display.set_mode((self.width, self.height))
 
     def update_colors(self):
+        """Apply current settings to colors and background style."""
+
         bg_key = self.data['settings'].get('background', 'Blue')
         if bg_key not in BACKGROUND_OPTIONS:
             bg_key = 'Blue'
@@ -978,6 +1077,8 @@ class MemoryMatchGame:
         self.init_background()
 
     def leaderboard_loop(self):
+        """Render and navigate the leaderboard display."""
+
         while self.state == 'leaderboard':
             dt = self.clock.get_time()
             self.menu_rect = pygame.Rect(10, 10, 80, 30)
@@ -1052,6 +1153,8 @@ class MemoryMatchGame:
             self.clock.tick(60)
 
     def keypad_loop(self):
+        """Show the keypad used to unlock dev mode."""
+
         buttons: List[Tuple[pygame.Rect, str]] = []
         padding = 10
         btn_w = 60
