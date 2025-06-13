@@ -322,6 +322,12 @@ class MemoryMatchGame:
         rect = surface.get_rect(center=(self.width // 2, y))
         self.screen.blit(surface, rect)
 
+    def draw_text(self, text: str, x: int, y: int, font=None):
+        """Draw text at a specific screen position."""
+        font = font or self.font
+        surface = font.render(text, True, self.word_color)
+        self.screen.blit(surface, (x, y))
+
     def draw_menu_button(self):
         self.menu_rect = pygame.Rect(10, 10, 80, 30)
         pygame.draw.rect(
@@ -787,8 +793,18 @@ class MemoryMatchGame:
                 val_surf.set_alpha(80)
                 val_rect = val_surf.get_rect(center=card.rect.center)
                 self.screen.blit(val_surf, val_rect)
-        self.draw_text_center(f'Time: {self.time_left}s', 20)
-        self.draw_text_center(f'Moves: {self.moves}', 50)
+        time_surf = self.font.render(
+            f'Time: {self.time_left}s', True, self.word_color)
+        moves_surf = self.font.render(
+            f'Moves: {self.moves}', True, self.word_color)
+        spacing = 20
+        total_w = time_surf.get_width() + spacing + moves_surf.get_width()
+        start_x = (self.width - total_w) // 2
+        self.screen.blit(time_surf, (start_x, 20))
+        self.screen.blit(
+            moves_surf,
+            (start_x + time_surf.get_width() + spacing, 20),
+        )
         if self.message_timer > 0:
             msg_surf = self.large_font.render(
                 self.message, True, (255, 215, 0)
